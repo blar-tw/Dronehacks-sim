@@ -1,0 +1,11 @@
+# Runtime / cache files generated in the lab
+__pycache__/
+.pytest_cache/
+.onboard/
+build/
+install/
+log/
+*.ulg
+*.bag
+*.mcap
+ws_snapshot.tgz
