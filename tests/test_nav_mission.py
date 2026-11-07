@@ -305,3 +305,83 @@ def test_timeout_ladder_then_land_and_z_clamp():
     cap = c.wall_top - p.wall_margin_m
     assert any("rule 7.7" in e for e in r.events)
     assert max(-x.out.setpoint[2] for x in r.log if x.out.setpoint) <= cap + 1e-9
+
+
+def test_run1_hit_lands_when_the_vehicle_cannot_follow():
+    """Lab run1 (2026-11-06): the drone hit the corridor wall, stopped moving and sank while the
+    setpoint stayed at cruise height; the mission kept flying. Now it lands within track_lost_s."""
+    c = course([CP(1, "g1", line=((-1.0, 4.0), (1.0, 4.0))), CP(2, "pad", circle=(0.0, 6.0, 0.5))])
+    p = MissionParams(return_leg=False, speed_mps=0.5)
+    hit = {}
+
+    def crash(t, m, px4):
+        if m.phase == "fly" and px4.truth[1] > 1.0 and "t" not in hit:
+            hit["t"] = t
+        if "t" in hit and m.phase != "land":
+            px4.truth[1] = min(px4.truth[1], 1.0)                 # against the wall
+            px4.truth[2] = max(0.0, 0.8 - 0.5 * (t - hit["t"]))    # sinking
+    r = fly(c, p, on_tick=crash)
+
+    assert r.m.result.startswith("aborted: tracking lost"), r.m.result
+    t_land = next(x.t for x in r.log if x.phase == "land")
+    assert t_land - hit["t"] < 0.8 / 0.5 + p.track_lost_s + 0.5
+
+
+def test_tracking_check_ignores_the_slow_takeoff_climb():
+    """Climbing from the ground lags the climb setpoint (run1: 0.8 m behind for 1.5 s); that is not a
+    lost track."""
+    c = course([CP(1, "g1", line=((-1.0, 1.5), (1.0, 1.5))), CP(2, "pad", circle=(0.0, 3.0, 0.5))])
+    p = MissionParams(return_leg=False, speed_mps=1.0)
+
+    def slow_climb(t, m, px4):
+        if m.phase == "climb":
+            px4.truth[2] = min(px4.truth[2], max(0.0, 0.15 * (t - 1.0) - 0.6))
+    r = fly(c, p, on_tick=slow_climb)
+    assert r.m.result == "complete", r.m.result
+
+
+def test_aligner_jump_is_not_a_gate_crossing():
+    """A map correction that moves the vehicle's map position across a gate line between two ticks
+    moved the map, not the vehicle: no crossing on that tick."""
+    c = course([CP(1, "g1", line=((-1.0, 2.0), (1.0, 2.0))), CP(2, "pad", circle=(0.0, 4.0, 0.5))])
+    p = MissionParams(return_leg=False, speed_mps=0.5)
+    jump = {}
+
+    def correct(t, m, px4):
+        if m.phase == "fly" and m.pos_map is not None and 1.85 < m.pos_map[1] < 1.95 and "t" not in jump:
+            jump["t"] = t
+            m.aligner.T = F.SE2(m.aligner.T.x, m.aligner.T.y + 0.3, m.aligner.T.yaw)
+    r = fly(c, p, on_tick=correct)
+
+    tick = next(x for x in r.log if x.t == jump["t"])
+    assert not any("crossed" in e for e in tick.out.events), tick.out.events
+
+
+def test_map_height_is_measured_from_the_takeoff_spot():
+    """PX4's z origin 0.4 m above the floor (EKF started elsewhere): the drone still cruises at
+    cruise_z_m above the floor."""
+    c = course([CP(1, "g1", line=((-1.0, 2.0), (1.0, 2.0))), CP(2, "pad", circle=(0.0, 4.0, 0.5))])
+    p = MissionParams(return_leg=False, speed_mps=1.0)
+    r = fly(c, p, T_odom=F.SE2(0.0, 0.0, 0.0, 0.4))
+
+    assert r.m.result == "complete", r.m.result
+    cruise = [x.truth[2] for x in r.log if x.phase == "fly"]
+    assert cruise and abs(np.median(cruise) - p.cruise_z_m) < 0.05
+
+
+@pytest.mark.parametrize("camera_alive", [True, False])
+def test_no_walls_in_view_is_not_a_dead_camera(camera_alive):
+    """Frames with no wall points (facing the net) keep the camera alive; only a silent camera lands
+    after depth_lost_land_s."""
+    c = course([CP(1, "g1", line=((-1.0, 6.0), (1.0, 6.0))), CP(2, "pad", circle=(0.0, 8.0, 0.5))])
+    p = MissionParams(return_leg=False, speed_mps=0.5, depth_lost_land_s=3.0)
+
+    def frames(t, m, px4):
+        if camera_alive:
+            m.on_depth_frame(t)
+    r = fly(c, p, points=lambda t, m, px4: False, on_tick=frames)
+
+    if camera_alive:
+        assert r.m.result == "complete", r.m.result
+    else:
+        assert r.m.result.startswith("aborted: no depth frames"), r.m.result

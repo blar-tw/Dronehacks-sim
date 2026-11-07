@@ -30,7 +30,9 @@ class PlannerParams:
     loc_margin_m: float = 0.08     # localization error allowance
     z_band_m: float = 0.25         # obstacles within z +- this count at a segment altitude
     gate_lead_m: float = 0.35      # entry/exit points this far before/after a gate line
-    min_inflate_m: float = 0.15    # if no path, retry with inflation shrinking down to this
+    min_inflate_m: float = 0.15    # if no path, retry with inflation shrinking down to this, but never
+                                   # below drone_span_m / 2 + half a cell diagonal (propeller tips; a path
+                                   # between free cell centres can pass that much closer than a centre)
     inflate_step_m: float = 0.02   # (addition) fallback step
     window_z_margin_m: float = 0.10  # (addition) z must be inside the window opening by this
     snap_max_m: float = 0.30       # (addition) occupied start/goal: snap to a free cell this close
@@ -68,6 +70,10 @@ class Planner:
     def inflate_m(self) -> float:
         p = self.p
         return p.drone_span_m / 2 + p.tilt_margin_m + p.loc_margin_m
+
+    def min_safe_inflate_m(self) -> float:
+        """Lowest inflation the fallback may use: the propeller radius plus half a cell diagonal."""
+        return self.p.drone_span_m / 2 + self.p.res * _SQ2 / 2
 
     def grid(self, z: float, inflate: float) -> Grid:
         """Inflated occupancy at the band around z, cached per (band, inflate)."""
@@ -124,7 +130,8 @@ class Planner:
 
     # ---------------------------------------------------------------- internals
     def _schedule(self) -> list:
-        top, lo, step = self.inflate_m(), self.p.min_inflate_m, self.p.inflate_step_m
+        top, step = self.inflate_m(), self.p.inflate_step_m
+        lo = max(self.p.min_inflate_m, self.min_safe_inflate_m())
         out = [top]
         while out[-1] - step >= lo - 1e-9:
             out.append(round(out[-1] - step, 6))

@@ -175,3 +175,14 @@ def plot_route(course, planner, segs, out):     # debug only: NAV_PLANNER_PLOT=/
     ax.legend(loc="lower right", fontsize=8)
     fig.savefig(out, dpi=110)
     plt.close(fig)
+
+
+def test_fallback_never_inflates_below_the_propeller_radius():
+    """min_inflate_m 0.15 is below the 0.20 m propeller radius: the fallback stops at the radius plus
+    half a cell diagonal, so a 0.45 m opening (open at 0.15-0.22 m) stays closed."""
+    c = synth([wall("w_west", -2.5, 0, -0.225, 0), wall("w_east", 0.225, 0, 2.5, 0)],
+              [Checkpoint(1, "slit", 1.0, line=((-0.225, 0.0), (0.225, 0.0))),
+               Checkpoint(2, "far", 1.0, line=((-2.5, 1.5), (2.5, 1.5)))])
+    pl = Planner(c)
+    p = pl.through_gate((0.0, -1.5), "slit", Z)
+    assert not p.ok and p.inflate_m >= pl.p.drone_span_m / 2

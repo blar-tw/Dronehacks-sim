@@ -7,7 +7,8 @@ to the pure mission with its time; the mission's Output is published as native P
   in   /fmu/out/{vehicle_local_position_v1, vehicle_attitude, vehicle_status_v1,
                  vehicle_land_detected, estimator_status_flags}
        health_topic (std_msgs/Bool), vio_state_topic (diagnostic_msgs/DiagnosticStatus)
-       depth_topic + its CameraInfo, TF base_link <- depth optical frame
+       depth_topic + its CameraInfo, TF base_link <- depth optical frame (checked: optical axis
+       within 25 deg of body forward, as refnav)
   out  /fmu/in/{offboard_control_mode, trajectory_setpoint, vehicle_command}
        status_topic (std_msgs/String JSON, 2 Hz), event log (nav.eventlog, JSON lines)
 
@@ -39,6 +40,9 @@ from . import course as COURSE
 from . import frames as F
 from . import landmarks as LM
 from .eventlog import EventLog
+from .posebuf import PoseBuffer, yaw_rate_dps
+
+CAMERA_MAX_OFF_FORWARD_DEG = 25.0      # refnav/node.py: a non-optical or non-forward frame is refused
 
 
 class NavNode(Node):
@@ -60,6 +64,8 @@ class NavNode(Node):
         self.vio_state_topic = P("vio_state_topic", "/estimator/vio_state").value
         self.base_frame = P("base_frame", "base_link").value
         self.exit_when_done = bool(P("exit_when_done", True).value)
+        self.max_yaw_rate_dps = float(P("depth_max_yaw_rate_dps", 15.0).value)   # skip frames while turning
+        self.pose_match_s = float(P("depth_pose_match_s", 0.1).value)            # pose within this of the stamp
         status_topic = P("status_topic", "/nav/status").value
         log_dir = P("log_dir", "").value or str(Path(__file__).resolve().parent.parent / "logs")
         self.log = EventLog(log_dir, "nav")
@@ -82,6 +88,8 @@ class NavNode(Node):
         self.pub_status = self.create_publisher(String, status_topic, 10)
 
         self.v = RC.Vehicle()
+        self.lpos_buf, self.att_buf = PoseBuffer(), PoseBuffer()   # (pos NED, heading) / q, by receive time
+        self.hdg_buf = PoseBuffer()                                  # heading alone, for the yaw rate
         self._yaw_align = (False, None)
         self.create_subscription(VehicleLocalPosition, "/fmu/out/vehicle_local_position_v1", self._on_lpos, PX4_QOS)
         self.create_subscription(VehicleAttitude, "/fmu/out/vehicle_attitude", self._on_att, PX4_QOS)
@@ -113,6 +121,10 @@ class NavNode(Node):
     def _on_lpos(self, m):
         self.v.pos = (m.x, m.y, m.z)
         self.v.heading = m.heading
+        if all(math.isfinite(c) for c in (m.x, m.y, m.z, m.heading)):
+            t = self._now()
+            self.lpos_buf.add(t, ((m.x, m.y, m.z), m.heading))
+            self.hdg_buf.add(t, m.heading)
         ya, ya_t = self._yaw_align
         heading_ok = bool(m.heading_good_for_control) or (ya and ya_t is not None and self._now() - ya_t <= 3.0)
         self.v.pos_ok = bool(m.xy_valid and m.z_valid and heading_ok
@@ -120,6 +132,7 @@ class NavNode(Node):
 
     def _on_att(self, m):
         self.v.q = tuple(float(c) for c in m.q)
+        self.att_buf.add(self._now(), self.v.q)
 
     def _on_status(self, m):
         self.v.armed = m.arming_state == 2
@@ -152,6 +165,9 @@ class NavNode(Node):
 
     def _calibration(self, frame_id):
         if self.extrinsic is not None and self.extrinsic[0] == frame_id:
+            if self.extrinsic[3] is not None:
+                self._reject("camera_not_forward", self.extrinsic[3])
+                return None
             return self.extrinsic
         from rclpy.time import Time
         try:
@@ -160,11 +176,34 @@ class NavNode(Node):
             self._reject("no_tf", f"no TF {self.base_frame} <- {frame_id} ({type(e).__name__})")
             return None
         r, t = tf.transform.rotation, tf.transform.translation
-        self.extrinsic = (frame_id, D.quat_to_mat(r.w, r.x, r.y, r.z), np.array([t.x, t.y, t.z]))
-        self.log.event(self._now(), "calibration", frame=frame_id, xyz=[t.x, t.y, t.z])
+        R = D.quat_to_mat(r.w, r.x, r.y, r.z)
+        fwd = R[:, 2]                                  # the optical axis (z) in the body frame
+        ang = math.degrees(math.acos(max(-1.0, min(1.0, fwd[0] / np.linalg.norm(fwd)))))
+        bad = None
+        if ang > CAMERA_MAX_OFF_FORWARD_DEG:
+            bad = (f"{frame_id}'s optical axis is {ang:.0f} deg off the body's forward axis: not a forward "
+                   f"REP-103 optical frame (x right, y down, z forward)")
+        self.extrinsic = (frame_id, R, np.array([t.x, t.y, t.z]), bad)
+        self.log.event(self._now(), "calibration", frame=frame_id, xyz=[t.x, t.y, t.z],
+                       q_wxyz=[r.w, r.x, r.y, r.z], optical_axis_off_forward_deg=round(ang, 1), ok=bad is None)
+        if bad is not None:
+            self._reject("camera_not_forward", bad)
+            return None
         return self.extrinsic
 
+    def _pose_at(self, stamp):
+        """(pos NED, heading, q) of PX4 nearest the image stamp, or the newest one (counted as
+        stamp_unmatched) when no pose is within depth_pose_match_s of it."""
+        lp, at = self.lpos_buf.at(stamp, self.pose_match_s), self.att_buf.at(stamp, self.pose_match_s)
+        if lp is None or at is None:
+            self._reject("stamp_unmatched", f"no PX4 pose within {self.pose_match_s:.2f} s of the image stamp "
+                                            "(using the newest pose)")
+            return self.v.pos, self.v.heading, self.v.q
+        return lp[1][0], lp[1][1], at[1]
+
     def _on_depth(self, m):
+        now = self._now()
+        self.mission.on_depth_frame(now)                # the camera is alive, whatever the frame holds
         if self.K is None:
             return self._reject("no_camera_info", f"no camera_info on {self.info_topic}")
         cal = self._calibration(m.header.frame_id)
@@ -172,18 +211,24 @@ class NavNode(Node):
             return None
         if self.v.q is None or self.v.pos is None or self.v.heading is None:
             return self._reject("no_pose", "no PX4 attitude/position yet")
+        stamp = m.header.stamp.sec + m.header.stamp.nanosec * 1e-9
+        rate = yaw_rate_dps(self.hdg_buf, stamp)
+        if rate > self.max_yaw_rate_dps:
+            return self._reject("turning", f"yawing {rate:.0f} deg/s > {self.max_yaw_rate_dps:.0f} deg/s")
         try:
             d = D.decode_depth(m.encoding, m.height, m.width, m.step, bytes(m.data))
         except ValueError as e:
             return self._reject("undecodable", str(e))
-        x, y, z = F.ned_to_enu(*self.v.pos)
-        pose = (x, y, z, F.heading_to_yaw(self.v.heading))
+        pos, heading, q = self._pose_at(stamp)
+        x, y, z = F.ned_to_enu(*pos)
+        pose = (x, y, z, F.heading_to_yaw(heading))
+        floor_z = self.mission.takeoff_odom[2] if self.mission.takeoff_odom is not None else z
         t0 = time.perf_counter()
-        pts = LM.wall_points(d, self.K, cal[1], cal[2], self.v.q, pose, self.lm_params)
+        pts = LM.wall_points(d, self.K, cal[1], cal[2], q, pose, self.lm_params, floor_z=floor_z)
         self.depth_ms = 0.9 * self.depth_ms + 0.1 * (time.perf_counter() - t0) * 1e3
         if pts is None:
             return self._reject("unusable", "too few valid depth pixels")
-        self.mission.on_points(self._now(), pts, z)
+        self.mission.on_points(now, pts, z)
         return None
 
     # ------------------------------------------------------------------ outputs

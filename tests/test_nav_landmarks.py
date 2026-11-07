@@ -98,3 +98,19 @@ def test_floor_is_not_a_wall_near_the_ground(z):
     assert pts is not None and len(pts) > 5
     fwd = np.array([math.cos(yaw), math.sin(yaw)])
     assert np.abs((pts - pos[:2]) @ fwd - 1.5).max() < 0.05          # only the wall, no floor
+
+
+@pytest.mark.parametrize("origin_z", [-0.4, 0.4])
+def test_floor_cut_is_measured_from_the_takeoff_floor(origin_z):
+    """PX4's z origin is the EKF start point, not the floor: with the vehicle's takeoff odom z passed
+    as floor_z, the floor is still cut and the wall is still kept when that origin is 0.4 m off."""
+    pos = np.array([1.3, -0.7, 0.05])                                 # 5 cm above the floor
+    yaw = math.radians(90)
+    d, q, _ = render_wall(pos, yaw, 0.0, 0.0, 1.5, (-0.5, 0.5))
+    pose = (pos[0], pos[1], pos[2] + origin_z, yaw)                     # odom z = true z + origin offset
+
+    pts = LM.wall_points(d, K, R_BODY_CAM, T_BODY_CAM, q, pose, LM.LandmarkParams(), floor_z=origin_z)
+
+    assert pts is not None and len(pts) > 5
+    fwd = np.array([math.cos(yaw), math.sin(yaw)])
+    assert np.abs((pts - pos[:2]) @ fwd - 1.5).max() < 0.05

@@ -15,6 +15,9 @@ Each step:
   * stop corners (xy heading change > corner_stop_deg): the carrot brakes to stop exactly on the
     vertex; once the vehicle is within arrive_m of it, it holds corner_hold_s (so the map aligner
     can correct while the vehicle is still; yaw already turns toward the next leg), then goes on.
+    If the vehicle never gets within arrive_m (PX4 settling just outside it, or a map correction
+    moving the vertex), it goes on corner_wait_max_s after the carrot reached the vertex.
+Repeated consecutive path points (zero-length segments) are dropped.
 """
 from __future__ import annotations
 
@@ -43,6 +46,7 @@ class FollowerParams:
     face_path: bool = True         # yaw follows the path tangent (forward camera sees ahead)
     corner_stop_deg: float = 45.0  # vertex turning more than this is a stop corner (0 or >= 180: off)
     corner_hold_s: float = 1.0     # still time at a stop corner once the vehicle has arrived
+    corner_wait_max_s: float = 4.0 # go on anyway this long after the carrot reached the stop corner
 
 
 @dataclass
@@ -69,9 +73,15 @@ class Follower:
     def set_path(self, pts, now, pos_xyz, yaw, speed_mps=None) -> None:
         """New path; the carrot starts at the vehicle's projection on it (whole path), speed 0."""
         P = np.asarray(pts, dtype=float)
+        keep = np.concatenate([[True], np.linalg.norm(np.diff(P, axis=0), axis=1) > 1e-9])
+        P = P[keep]
+        if len(P) == 1:                       # a single point: a zero-length path that is already done
+            P = np.vstack([P, P])
         D = P[1:] - P[:-1]
         lens = np.linalg.norm(D, axis=1)
-        self.P, self.U = P, D / lens[:, None]
+        U = np.zeros_like(D)
+        U[lens > 0] = D[lens > 0] / lens[lens > 0, None]
+        self.P, self.U = P, U
         self.S = np.concatenate([[0.0], np.cumsum(lens)])
         self.L = float(self.S[-1])
         # xy heading per segment (a vertical segment keeps the previous heading), unwrapped so that
@@ -117,6 +127,7 @@ class Follower:
     def _next_stop(self):
         self.k_stop = int(np.searchsorted(self.stops, self.s_cmd, side="right"))
         self.t_corner = None
+        self.t_at_stop = None             # when the carrot reached the current stop corner
 
     # ------------------------------------------------------------------ step
     def step(self, now, pos_xyz, yaw, speed_scale=1.0) -> Setpoint:
@@ -130,11 +141,14 @@ class Follower:
         stop_s = self.stops[self.k_stop] if self.k_stop < len(self.stops) else self.L
         holding = self.s_cmd >= stop_s and self.k_stop < len(self.stops)
         if holding:
+            if self.t_at_stop is None:
+                self.t_at_stop = now
             if self.t_corner is None and np.linalg.norm(pos - self._point(stop_s)) <= p.arrive_m:
                 self.t_corner = now
-            if self.t_corner is not None and now - self.t_corner >= p.corner_hold_s:
+            held_enough = self.t_corner is not None and now - self.t_corner >= p.corner_hold_s
+            if held_enough or now - self.t_at_stop >= p.corner_wait_max_s:
                 self.k_stop += 1
-                self.t_corner = None
+                self.t_corner = self.t_at_stop = None
                 holding = False
                 stop_s = self.stops[self.k_stop] if self.k_stop < len(self.stops) else self.L
 

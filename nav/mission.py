@@ -26,6 +26,14 @@ Safety behaviour kept from refnav.core: health gate before arming; PX4 leaving O
 airborne is never fought ('yielded'); PX4 owns every landing (no streaming after AUTO_LAND);
 unhealthy/silent estimator lands. Rule 7.7: in the main run the commanded z never exceeds
 wall_top - wall_margin_m (clamped and logged).
+
+Added after lab run1 (2026-11-06, the drone hit the first corridor's wall and the mission kept
+flying for 6 s): the vehicle staying more than track_z_m (height; not while climbing) or track_xy_m
+(horizontal) from the commanded setpoint for track_lost_s lands it where it is.
+
+Heights: map z is height above the main-leg takeoff spot (odom z minus the takeoff odom z), because
+PX4's z origin is the EKF start point, not the floor. depth_lost_land_s watches the camera (any
+frame, usable or not); depth_stale_hover_s watches wall points.
 """
 from __future__ import annotations
 
@@ -81,6 +89,9 @@ class MissionParams:
     arm_wait_s: float = 30.0
     cmd_resend_s: float = 1.0
     land_timeout_s: float = 60.0
+    track_z_m: float = 0.40            # tracking lost: |z - setpoint z| above this (not in climb) ...
+    track_xy_m: float = 1.00           # ... or horizontal distance to the setpoint above this ...
+    track_lost_s: float = 2.0          # ... for this long: land where it is (0 = off)
 
 
 @dataclass
@@ -186,7 +197,10 @@ class Mission:
         self.land_auto_seen = False
         self.landed_since = None
         self.land_request = self.stop_request = None
-        self.pts_t = None
+        self.pts_t = None                     # last frame with wall points
+        self.frame_t = None                   # last depth frame of any kind (the camera is alive)
+        self.z0 = 0.0                         # odom z of the main-leg takeoff spot (map z = odom z - z0)
+        self.track_bad_since = None
         self.vio_state, self.vio_lost_s = "UNKNOWN", 0.0
         self.last_align = None
         self.speed_scale = None
@@ -206,11 +220,18 @@ class Mission:
             self._pending.append(f"vio_state {self.vio_state} -> {state} (lost {float(lost_s):.1f} s)")
         self.vio_state, self.vio_lost_s = state, float(lost_s)
 
+    def on_depth_frame(self, t):
+        """A depth frame arrived, usable or not: the camera is alive."""
+        self.frame_t = t
+
     def on_points(self, t, points_odom_xy, z):
+        """Wall points of one depth frame, odom xy, taken at odom height z."""
+        self.frame_t = t
         pts = np.asarray(points_odom_xy, float).reshape(-1, 2)
         if len(pts) == 0:
             return
         self.pts_t = t
+        z = z - self.z0 + self.aligner.T.z                      # map height of the frame
         self.counts["point_frames"] += 1
         if not self.aligner_ready or self.pos_odom is None:
             return
@@ -273,8 +294,39 @@ class Mission:
                 and self._seg().z < self.course.wall_top)
 
     def _depth_age(self, now):
+        """Time since the last wall points (or since takeoff)."""
         ref = self.t_airborne if self.pts_t is None else max(self.pts_t, self.t_airborne)
         return now - ref
+
+    def _camera_age(self, now):
+        """Time since the last depth frame of any kind (or since takeoff)."""
+        ref = self.t_airborne if self.frame_t is None else max(self.frame_t, self.t_airborne)
+        return now - ref
+
+    def _to_map(self, x, y, z, yaw):
+        X, Y, Z, YAW = self.aligner.to_map(x, y, z, yaw)
+        return X, Y, Z - self.z0, YAW
+
+    def _to_odom(self, x, y, z, yaw):
+        return self.aligner.to_odom(x, y, z + self.z0, yaw)
+
+    def _tracking_error(self, now):
+        """'' or why the vehicle has been too far from its setpoint for track_lost_s."""
+        p = self.p
+        if p.track_lost_s <= 0 or self.sp_map is None or self.pos_map is None:
+            return ""
+        dz = self.pos_map[2] - self.sp_map[2]
+        dxy = math.hypot(self.pos_map[0] - self.sp_map[0], self.pos_map[1] - self.sp_map[1])
+        bad = dxy > p.track_xy_m or (self.phase != "climb" and abs(dz) > p.track_z_m)
+        if not bad:
+            self.track_bad_since = None
+            return ""
+        if self.track_bad_since is None:
+            self.track_bad_since = now
+        if now - self.track_bad_since < p.track_lost_s:
+            return ""
+        return (f"tracking lost for {now - self.track_bad_since:.1f} s: {dxy:.2f} m from the setpoint, "
+                f"height {self.pos_map[2]:.2f} m vs {self.sp_map[2]:.2f} m (a hit or a stall)")
 
     def _in_tube(self, pm):
         (x0, x1), (y0, y1) = self.course.tube["x"], self.course.tube["y"]
@@ -327,7 +379,7 @@ class Mission:
             x, y, z = F.ned_to_enu(*v.pos)
             self.pos_odom = (x, y, z, F.heading_to_yaw(v.heading))
             if self.aligner_ready:
-                self.pos_map = self.aligner.to_map(*self.pos_odom)
+                self.pos_map = self._to_map(*self.pos_odom)
 
         if self.phase in AIRBORNE:
             bad = self.health.bad_for(now)
@@ -336,8 +388,10 @@ class Mission:
                 self._land(now, out, f"estimator unhealthy or silent for {bad:.1f} s (limit {limit:.1f} s)")
             elif not v.pos_ok or v.pos is None:
                 self._land(now, out, "PX4 position or heading invalid")
-            elif self._depth_matters() and self._depth_age(now) > p.depth_lost_land_s:
-                self._land(now, out, f"no depth points for {self._depth_age(now):.1f} s")
+            elif self._depth_matters() and self._camera_age(now) > p.depth_lost_land_s:
+                self._land(now, out, f"no depth frames for {self._camera_age(now):.1f} s")
+            elif self._tracking_error(now):
+                self._land(now, out, self._tracking_error(now))
             else:
                 if self.prev_odom is not None:
                     self.aligner.predict(math.hypot(self.pos_odom[0] - self.prev_odom[0],
@@ -407,14 +461,16 @@ class Mission:
         ox, oy, oz, oyaw = self.pos_odom
         if not self.aligner_ready:             # main run: anchor the map at the launch mark, on the ground
             self.takeoff_odom, self.t_takeoff = (ox, oy, oz), now
+            self.z0 = oz
             yaw_off = 0.0 if math.isnan(self.p.launch_yaw_deg) else F.wrap(math.radians(self.p.launch_yaw_deg) - oyaw)
             self.aligner.init_at_launch((ox, oy), tuple(self.course.launch), yaw_offset=yaw_off)
             self.aligner_ready = True
             self._event(out, f"takeoff: odom ({ox:.2f}, {oy:.2f}, {oz:.2f}) heading {math.degrees(oyaw):.1f} deg -> "
                              f"launch mark ({self.course.launch[0]:.2f}, {self.course.launch[1]:.2f}), "
                              f"yaw offset {math.degrees(yaw_off):+.1f} deg")
-        self.pos_map = self.aligner.to_map(ox, oy, oz, oyaw)
+        self.pos_map = self._to_map(ox, oy, oz, oyaw)
         self.sp_map = list(self.pos_map)
+        self.track_bad_since = None
         self.t_airborne = now
         self._begin_segment(now, out)
 
@@ -486,8 +542,10 @@ class Mission:
             self.tunnel_active, self.t_tunnel = True, now
             self._event(out, f"tunnel enter at ({pm[0]:.2f}, {pm[1]:.2f}): aligner sigma {self.aligner.sigma_xy():.3f} m, "
                              f"depth ignored, {p.tunnel_speed_mps:.2f} m/s")
-        if seg.kind == "gate" and self.prev_map is not None:
-            c = crossing(self.prev_map, pm, *seg.cp.line)
+        if seg.kind == "gate" and self.prev_odom is not None:
+            # both ends through the current transform: an aligner correction between the two ticks
+            # moves the map, not the vehicle, and must not count as a crossing
+            c = crossing(self._to_map(*self.prev_odom)[:2], pm, *seg.cp.line)
             if c == self.cross_sign:
                 self.crossed = True
                 if all(q["name"] != seg.name for q in self.passed):
@@ -583,15 +641,15 @@ class Mission:
         if self.sp_map is None:
             return tuple(self.sp_ned) if self.sp_ned is not None else None
         x, y, z, yaw = self.sp_map
-        xo, yo, zo, yawo = self.aligner.to_odom(x, y, z, yaw)
-        if self.leg == "main" and max(z, zo) > self.z_cap:          # rule 7.7
+        if self.leg == "main" and z > self.z_cap:                   # rule 7.7, on the height above the floor
             if not self.clamping:
                 self.counts["z_clamps"] += 1
-                self._event(out, f"rule 7.7: commanded z {max(z, zo):.2f} m clamped to {self.z_cap:.2f} m")
+                self._event(out, f"rule 7.7: commanded z {z:.2f} m clamped to {self.z_cap:.2f} m")
             self.clamping = True
-            zo = min(zo, self.z_cap)
+            z = self.z_cap
         else:
             self.clamping = False
+        xo, yo, zo, yawo = self._to_odom(x, y, z, yaw)
         n, e, d = F.enu_to_ned(xo, yo, zo)
         return (n, e, d, F.yaw_to_heading(yawo))
 
@@ -617,6 +675,7 @@ class Mission:
             "vio": {"state": self.vio_state, "lost_s": r(self.vio_lost_s, 2)},
             "speed_scale": r(self.speed_scale, 2), "hold": self.hold_why,
             "depth_age_s": None if self.pts_t is None else r(now - self.pts_t, 2),
+            "camera_age_s": None if self.frame_t is None else r(now - self.frame_t, 2),
             "health_bad_s": r(bad, 2),
             "setpoint_map": None if self.sp_map is None else [r(c) for c in self.sp_map],
             "pos_map": None if self.pos_map is None else [r(c) for c in self.pos_map],

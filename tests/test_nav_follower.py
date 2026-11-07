@@ -74,3 +74,32 @@ def test_parallel_corridor_never_steals_progress():
     # and a normal flight round the U: progress never jumps
     s = [sp.progress_m for *_, sp in fly(Follower(p), pts)]
     assert np.all(np.diff(s) <= 0.1) and np.all(np.diff(s) >= -0.05)
+
+
+def test_stop_corner_goes_on_when_the_vehicle_never_arrives():
+    """PX4 settling just outside arrive_m of the vertex must not park the carrot until the segment
+    times out: after corner_wait_max_s it goes on."""
+    p = FollowerParams()
+    f = Follower(p)
+    f.set_path([(0, 0, 0.8), (3, 0, 0.8), (3, 3, 0.8)], 0.0, (0.0, 0.0, 0.8), 0.0)
+    t, reached, released = 0.0, None, None
+    while t < 30.0 and released is None:
+        t += DT
+        sp = f.step(t, (min(f.s_cmd, 3.0) - 0.2, 0.0, 0.8), 0.0 if f.s_cmd < 3.0 else math.pi / 2)  # 0.2 m short
+        if sp.holding and reached is None:
+            reached = t
+        if reached is not None and not sp.holding:
+            released = t
+    assert reached is not None and released is not None
+    assert abs((released - reached) - p.corner_wait_max_s) <= 2 * DT
+
+
+def test_repeated_path_points_give_finite_setpoints():
+    f = Follower(FollowerParams())
+    log = fly(f, [(0, 0, 0.8), (0, 0, 0.8), (2, 0, 0.8), (2, 0, 0.8), (2, 2, 0.8)])
+    assert all(math.isfinite(c) for *_, sp in log for c in (sp.x, sp.y, sp.z, sp.yaw))
+    assert log[-1][3].done
+    one = Follower(FollowerParams())
+    one.set_path([(1, 1, 0.8)], 0.0, (1.0, 1.0, 0.8), 0.0)
+    sp = one.step(DT, (1.0, 1.0, 0.8), 0.0)
+    assert sp.done and math.isfinite(sp.x)

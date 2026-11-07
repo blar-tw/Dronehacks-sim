@@ -68,3 +68,33 @@ def test_inflate_xyz_adds_to_the_position_diagonal_only():
     out = inflate_xyz(cov, 0.04)
     assert [out[i] for i in (0, 7, 14)] == [0.04] * 3
     assert out[1] == 0.3 and out[21] == 0.0 and math.isclose(sum(out), 0.3 + 0.12)
+
+
+def test_a_runaway_vio_is_never_forced_into_px4():
+    """cuVSLAM diverging (every sample 10 m/s off): each sample is a fresh insane one, so the bridge
+    keeps withholding and the mission's WITHHELD landing can fire. Forcing it out after 2 s would
+    feed PX4 the runaway."""
+    health, loss = VioHealth(jump_m=1.0, max_speed_mps=5.0, quiet_s=5.0), VioLoss(withhold_max_s=2.0)
+    sent = []
+    for i in range(15 * 10):
+        t = i / 15
+        loss.features(t, 200)
+        x = 0.1 * t if t < 2.0 else 0.2 + 10.0 * (t - 2.0)
+        sane, _ = health.update(t, (x, 0.0, 0.8))
+        if loss.decide(t, sane, fresh_bad=health.sample_bad).send:
+            sent.append(t)
+    assert not [t for t in sent if t > 2.0]          # the runaway starts after t = 2.0
+
+
+def test_a_single_jump_is_still_forced_after_the_cap():
+    """One jump then smooth motion: the settling samples are forced out after withhold_max_s."""
+    health, loss = VioHealth(jump_m=1.0, quiet_s=5.0), VioLoss(withhold_max_s=2.0)
+    last_sent, worst_gap = 0.0, 0.0
+    for i in range(15 * 20):
+        t = i / 15
+        loss.features(t, 200)
+        x = 0.1 * t + (1.5 if t >= 5.0 else 0.0)
+        sane, _ = health.update(t, (x, 0.0, 0.8))
+        if loss.decide(t, sane, fresh_bad=health.sample_bad).send:
+            worst_gap, last_sent = max(worst_gap, t - last_sent), t
+    assert worst_gap <= 2.0 + 1 / 15 + 1e-9

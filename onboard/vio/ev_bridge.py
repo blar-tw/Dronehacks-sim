@@ -112,7 +112,7 @@ class EvBridge(Node):
         sane,reason=self.health.update(capture*1e-6,pos)
         if self.guard is not None and not self.guard.may_publish():
             self.ok=False;self.reason='proving sole vision ownership';self.counts['unowned']+=1;return
-        d=self.loss.decide(now*1e-6,sane)
+        d=self.loss.decide(now*1e-6,sane,fresh_bad=self.health.sample_bad)
         self.ok,self.reason=d.send,reason
         if not d.send:self.state='WITHHELD';self.counts['withheld']+=1;return
         if d.forced:self.reason=f'sent after {self.loss.withhold_max_s:.1f} s withheld: {reason}';self.counts['forced']+=1

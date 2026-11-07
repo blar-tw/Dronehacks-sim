@@ -18,6 +18,16 @@ map error and the frame's attitude / depth bias, so hundreds of them are not ind
 Process noise is "sigma grows drift_per_m per metre flown", applied at the vehicle: VIO drift
 accumulates where the vehicle is, so predict()/init_at_launch() take the vehicle's odom xy and
 build the (tx, ty, yaw) covariance with the lever arm from the odom origin.
+
+An update is accepted only if (lab run1, 2026-11-06: floor points matched a wall and 4 updates moved
+the map 0.40 m and 5.8 deg on a drone that had not moved):
+  * the fit is good: median |residual| <= max_median_resid_m. Points from a surface that is not in
+    the map land anywhere inside the match_max_m gate (run1: rms 14.4 cm = 0.25 / sqrt(3), uniform);
+    the median, unlike the rms, still passes real walls whose far points carry stereo depth noise;
+  * the step is plausible: its Mahalanobis distance under the prior covariance at the vehicle is
+    <= gate_nsigma, besides the absolute max_step_xy_m / max_step_yaw_deg limits;
+and the covariance never drops below min_sigma_xy_m / min_sigma_yaw_deg at the vehicle, so the
+step gate cannot lock the estimate after many updates.
 """
 from __future__ import annotations
 
@@ -46,6 +56,10 @@ class AlignerParams:
     huber_k: float = 2.0               # Huber threshold in meas_sigma units
     corner_m: float = 0.05             # drop a point whose 2nd-best face (another line) is within this
                                        # of its best one, or that lies this far past its face's end
+    max_median_resid_m: float = 0.06   # reject a fit whose median |point-to-face residual| is larger
+    gate_nsigma: float = 4.0           # reject a step farther than this from the prior (Mahalanobis)
+    min_sigma_xy_m: float = 0.02       # covariance floor at the vehicle
+    min_sigma_yaw_deg: float = 0.5
 
 
 @dataclass
@@ -100,6 +114,20 @@ class Aligner:
         cv += np.diag((sig + k * abs(dist_m)) ** 2 - sig ** 2)
         Ai = np.linalg.inv(A)
         self.cov = Ai @ cv @ Ai.T
+
+    def _floored(self, cov, odom_xy):
+        """cov with the vehicle's position sigma >= min_sigma_xy_m in every direction and its yaw sigma
+        >= min_sigma_yaw_deg."""
+        A = _lever(self.T, odom_xy)
+        cv = A @ cov @ A.T
+        lo = self.p.min_sigma_xy_m ** 2
+        ev, V = np.linalg.eigh(cv[:2, :2])
+        if ev.min() < lo:
+            cv[:2, :2] = V @ np.diag(np.maximum(ev, lo)) @ V.T
+        cv[2, 2] = max(cv[2, 2], math.radians(self.p.min_sigma_yaw_deg) ** 2)
+        Ai = np.linalg.inv(A)
+        cv = Ai @ cv @ Ai.T
+        return 0.5 * (cv + cv.T)
 
     def sigma_xy(self) -> float:
         """sqrt of the larger eigenvalue of the xy block (position sigma at the odom origin)."""
@@ -186,7 +214,7 @@ class Aligner:
         H, r, w = self._match(P, x, faces, sensor_odom_xy)
         n = len(r)
 
-        T_new = SE2(float(x[0]), float(x[1]), wrap(float(x[2])))
+        T_new = SE2(float(x[0]), float(x[1]), wrap(float(x[2])), self.T.z)
         ref = P.mean(axis=0) if sensor_odom_xy is None else sensor_odom_xy
         a, b = self.T.apply(*ref), T_new.apply(*ref)
         dx, dy, dyaw = b[0] - a[0], b[1] - a[1], wrap(T_new.yaw - self.T.yaw)
@@ -194,6 +222,16 @@ class Aligner:
         if n < p.min_points:
             return AlignResult(False, f"only {n} of {len(P)} points matched a face (min_points {p.min_points})",
                                n, dx, dy, dyaw)
+        med = float(np.median(np.abs(r)))
+        if med > p.max_median_resid_m:
+            return AlignResult(False, f"poor fit: median residual {med * 100:.1f} cm > "
+                                      f"{p.max_median_resid_m * 100:.1f} cm", n, dx, dy, dyaw)
+        A = _lever(self.T, ref)
+        d = np.array([dx, dy, dyaw])
+        m = math.sqrt(max(0.0, float(d @ np.linalg.solve(A @ self.cov @ A.T, d))))
+        if m > p.gate_nsigma:
+            return AlignResult(False, f"step {step:.2f} m, {math.degrees(dyaw):+.1f} deg is {m:.1f} sigma from the "
+                                      f"prior (gate_nsigma {p.gate_nsigma:.1f})", n, dx, dy, dyaw)
         if step > p.max_step_xy_m:
             return AlignResult(False, f"step {step:.2f} m > max_step_xy_m {p.max_step_xy_m:.2f}", n, dx, dy, dyaw)
         if abs(math.degrees(dyaw)) > p.max_step_yaw_deg:
@@ -201,7 +239,7 @@ class Aligner:
                                       f"{p.max_step_yaw_deg:.1f}", n, dx, dy, dyaw)
         self.T = T_new
         cov = np.linalg.inv(Pinv + H.T @ (H * w[:, None]))
-        self.cov = 0.5 * (cov + cov.T)
+        self.cov = self._floored(0.5 * (cov + cov.T), ref)
         self.t_update = now
         rms = math.sqrt(float(np.mean(r * r)))
         return AlignResult(True, f"ok: {n} points, rms {rms * 100:.1f} cm", n, dx, dy, dyaw)
