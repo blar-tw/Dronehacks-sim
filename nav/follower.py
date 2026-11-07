@@ -15,6 +15,10 @@ Each step:
   * stop corners (xy heading change > corner_stop_deg): the carrot brakes to stop exactly on the
     vertex; once the vehicle is within arrive_m of it, it holds corner_hold_s (so the map aligner
     can correct while the vehicle is still; yaw already turns toward the next leg), then goes on.
+    If the vehicle has not arrived corner_arrive_timeout_s after the carrot parked, the hold
+    starts anyway (a vehicle that cannot settle to arrive_m must not stall the mission).
+  * stop_every_vertex (team decision 5, "stop-and-go"): every interior vertex is a stop corner,
+    turn angle or not; the planner's gate entry point is a vertex, so the vehicle is still there.
 """
 from __future__ import annotations
 
@@ -43,6 +47,8 @@ class FollowerParams:
     face_path: bool = True         # yaw follows the path tangent (forward camera sees ahead)
     corner_stop_deg: float = 45.0  # vertex turning more than this is a stop corner (0 or >= 180: off)
     corner_hold_s: float = 1.0     # still time at a stop corner once the vehicle has arrived
+    corner_arrive_timeout_s: float = 4.0  # parked this long without arrival: hold anyway (0 = wait forever)
+    stop_every_vertex: bool = False       # strict stop-and-go: hold corner_hold_s at every interior vertex
 
 
 @dataclass
@@ -69,9 +75,15 @@ class Follower:
     def set_path(self, pts, now, pos_xyz, yaw, speed_mps=None) -> None:
         """New path; the carrot starts at the vehicle's projection on it (whole path), speed 0."""
         P = np.asarray(pts, dtype=float)
+        # drop repeated consecutive points (planner start == gate entry after a replan): a zero-length
+        # segment would make U NaN and every setpoint NaN; a single point becomes a zero-length path
+        keep = np.concatenate([[True], np.linalg.norm(P[1:] - P[:-1], axis=1) > 1e-6])
+        P = P[keep]
+        if len(P) < 2:
+            P = np.vstack([P, P])
         D = P[1:] - P[:-1]
         lens = np.linalg.norm(D, axis=1)
-        self.P, self.U = P, D / lens[:, None]
+        self.P, self.U = P, D / np.where(lens > 0, lens, 1.0)[:, None]   # the only 0 len is the padded point
         self.S = np.concatenate([[0.0], np.cumsum(lens)])
         self.L = float(self.S[-1])
         # xy heading per segment (a vertical segment keeps the previous heading), unwrapped so that
@@ -88,7 +100,10 @@ class Follower:
         ang3d = np.arccos(np.clip(np.sum(self.U[1:] * self.U[:-1], axis=1), -1.0, 1.0))
         self.bend = np.maximum(np.abs(self.turn), ang3d)
         cs = self.p.corner_stop_deg
-        self.stops = self.Sv[np.abs(self.turn) > math.radians(cs)] if 0 < cs < 180 else self.Sv[:0]
+        if self.p.stop_every_vertex:
+            self.stops = self.Sv                      # stop-and-go: every vertex, including gate entries
+        else:
+            self.stops = self.Sv[np.abs(self.turn) > math.radians(cs)] if 0 < cs < 180 else self.Sv[:0]
 
         self.v_path = self.p.speed_mps if speed_mps is None else float(speed_mps)
         self.s_veh = self._project(np.asarray(pos_xyz, dtype=float), -math.inf, math.inf)
@@ -116,7 +131,8 @@ class Follower:
 
     def _next_stop(self):
         self.k_stop = int(np.searchsorted(self.stops, self.s_cmd, side="right"))
-        self.t_corner = None
+        self.t_corner = None   # when the hold began (vehicle arrived, or arrival timed out)
+        self.t_parked = None   # when the carrot reached the stop vertex
 
     # ------------------------------------------------------------------ step
     def step(self, now, pos_xyz, yaw, speed_scale=1.0) -> Setpoint:
@@ -130,11 +146,18 @@ class Follower:
         stop_s = self.stops[self.k_stop] if self.k_stop < len(self.stops) else self.L
         holding = self.s_cmd >= stop_s and self.k_stop < len(self.stops)
         if holding:
-            if self.t_corner is None and np.linalg.norm(pos - self._point(stop_s)) <= p.arrive_m:
-                self.t_corner = now
+            if self.t_parked is None:
+                self.t_parked = now
+            if self.t_corner is None:
+                arrived = np.linalg.norm(pos - self._point(stop_s)) <= p.arrive_m
+                # a vehicle that never settles to arrive_m (position-hold error, aligner jump) would
+                # otherwise park here until the mission's 60 s timeout and its back-off/replan ladder
+                timed_out = 0 < p.corner_arrive_timeout_s <= now - self.t_parked
+                if arrived or timed_out:
+                    self.t_corner = now
             if self.t_corner is not None and now - self.t_corner >= p.corner_hold_s:
                 self.k_stop += 1
-                self.t_corner = None
+                self.t_corner = self.t_parked = None
                 holding = False
                 stop_s = self.stops[self.k_stop] if self.k_stop < len(self.stops) else self.L
 
@@ -147,9 +170,11 @@ class Follower:
             vc = self._corner_limit()
             target = min(self.v_path * min(speed_scale, 1.0), vc)
             v = min(self.v + a * dt, target) if self.v < target else max(self.v - a * dt, target)
-            # brake to stop exactly at the next stop corner / the end (discrete-time profile: the
-            # speed drops a*dt per step and the last step lands on the stop point)
-            d_stop = stop_s - self.s_cmd
+            # brake to stop exactly at the next stop corner / the end: d = v(v + a dt) / 2a is the distance
+            # covered by the speeds v, v - a dt, ... down to 0, so solving for v makes the speed drop a*dt
+            # per step and the last step land on the stop point, for any dt; v >= 0 whenever d >= 0. The
+            # max() guards the 1-ulp case where S0 + (S1 - S0) projected the vehicle a hair past the end.
+            d_stop = max(stop_s - self.s_cmd, 0.0)
             v = min(v, 0.5 * (-a * dt + math.sqrt((a * dt) ** 2 + 8 * a * d_stop)))
             s_new = max(self.s_cmd, min(self.s_cmd + v * dt, self.s_veh + p.lead_max_m, stop_s))
             self.v = (s_new - self.s_cmd) / dt

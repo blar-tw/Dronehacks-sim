@@ -22,5 +22,12 @@
     vel_sigma_rate: 0.25    # m/s per s
     vel_sigma_max: 0.5      # m/s
     # Insane samples (jump/speed, health_quiet_s settling) are withheld at most
-    # this long, then sent at the max sigma with one reset_counter bump.
+    # this long, then sent at the max sigma with one reset_counter bump, but only
+    # once the samples are again consistent frame to frame: a sample that is itself
+    # a fresh jump/over-speed restarts the clock and is never sent (the mission
+    # lands after 3 s WITHHELD, before EKF2_NOAID_TOUT).
     withhold_max_s: 2.0
+    # No feature count for this long (topic absent on this cuVSLAM build, or not
+    # heard yet) = tracking quality UNKNOWN, not weak: samples go out unchanged
+    # and the bridge logs one warning, instead of DEGRADED at max sigma forever.
+    features_timeout_s: 1.0

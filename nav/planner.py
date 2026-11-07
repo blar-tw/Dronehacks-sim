@@ -2,11 +2,12 @@
 
 One altitude per segment (ARCHITECTURE.md "Planner"): obstacles overlapping the band
 [z - z_band_m, z + z_band_m] are grown by half the drone span + tilt + localization margins
-(nav.course.occupancy), A* runs 8-connected on that grid, and the cell path is string-pulled into a
-short polyline whose every edge is checked free on the grid (sampled at res/2). A gate (checkpoint
-line) is crossed on one straight entry -> exit edge through the centre of the free part of the
-line, away from the side the start is on. No course coordinates here: all geometry comes from the
-Course object.
+(nav.course.occupancy, which also adds the half-cell the centre-marking can miss, so every point of
+every FREE cell is at least inflate_m from every real obstacle), A* runs 8-connected on that grid,
+and the cell path is string-pulled into a short polyline whose every edge is checked free on the
+grid (exact cell traversal, not point sampling). A gate (checkpoint line) is crossed on one straight
+entry -> exit edge through the centre of the free part of the line, away from the side the start is
+on. No course coordinates here: all geometry comes from the Course object.
 """
 from __future__ import annotations
 
@@ -30,7 +31,9 @@ class PlannerParams:
     loc_margin_m: float = 0.08     # localization error allowance
     z_band_m: float = 0.25         # obstacles within z +- this count at a segment altitude
     gate_lead_m: float = 0.35      # entry/exit points this far before/after a gate line
-    min_inflate_m: float = 0.15    # if no path, retry with inflation shrinking down to this
+    min_inflate_m: float = 0.25    # if no path, retry with inflation shrinking down to this (= span/2 +
+                                   # tilt: only the localization allowance is traded away); the schedule
+                                   # never goes below drone_span_m / 2, the propeller tips
     inflate_step_m: float = 0.02   # (addition) fallback step
     window_z_margin_m: float = 0.10  # (addition) z must be inside the window opening by this
     snap_max_m: float = 0.30       # (addition) occupied start/goal: snap to a free cell this close
@@ -43,7 +46,7 @@ class Path:
     why: str = ""        # on failure: which gate / which gap closed, with numbers
     gate: str | None = None          # checkpoint name this path crosses (None for a plain goal)
     cross_index: int | None = None   # pts[cross_index] -> pts[cross_index+1] crosses the gate line
-    inflate_m: float = 0.0           # inflation actually used
+    inflate_m: float = 0.0           # inflation actually used: every edge keeps >= this from every obstacle
     notes: str = ""      # (addition) on success: snaps, reduced inflation, gate free width
 
     @property
@@ -93,7 +96,7 @@ class Planner:
         d = b - a
         L = float(np.hypot(*d))
         left = np.array([-d[1], d[0]]) / L
-        side = d[0] * (start[1] - a[1]) - d[1] * (start[0] - a[0])
+        side = d[0] * (start[1] - a[1]) - d[1] * (start[0] - a[0])   # > 0: start is left of a->b
         n = -left if side > 0 else left                    # away from the start's side
 
         def attempt(g: Grid):
@@ -124,7 +127,9 @@ class Planner:
 
     # ---------------------------------------------------------------- internals
     def _schedule(self) -> list:
-        top, lo, step = self.inflate_m(), self.p.min_inflate_m, self.p.inflate_step_m
+        p = self.p
+        top, step = self.inflate_m(), p.inflate_step_m
+        lo = max(p.min_inflate_m, p.drone_span_m / 2)   # never plan the propeller tips into a wall
         out = [top]
         while out[-1] - step >= lo - 1e-9:
             out.append(round(out[-1] - step, 6))
@@ -140,14 +145,17 @@ class Planner:
                 tried.append((r, f, g))
                 continue
             if tried:
-                notes.insert(0, f"inflation reduced to {r:.2f} m ({tried[0][0]:.2f} m: {tried[0][1].msg})")
+                # loud: the mission should log this and slow down (only the localization allowance is left)
+                notes.insert(0, f"inflation reduced to {r:.2f} m from {tried[0][0]:.2f} m "
+                                f"({tried[0][1].msg}): margin is thin, fly slowly")
             return Path([(float(x), float(y), float(z)) for x, y in pts], True, "", gate, ci, r,
                         "; ".join(notes))
         r, f, g = tried[-1]
         why = f"{what} at z={z:.2f}: {f.msg} at inflation {r:.2f} m"
         if f.data.get("kind") == "line":
             w0 = self._open_width(z, *line)
-            why += f" (open width at this height {w0:.2f} m, needs > {2 * r:.2f} m = 2 x inflation)"
+            why += (f" (open width at this height {w0:.2f} m, needs > {2 * (r + self.p.res / 2):.2f} m"
+                    f" = 2 x (inflation + half a cell))")
         elif f.data.get("kind") == "astar":
             why += self._gap(z, r, g, f.data["s"], f.data["g"])
         why += f" (tried {self.inflate_m():.2f}..{r:.2f} m)"
@@ -191,15 +199,29 @@ class Planner:
         return (i0 + a, j0 + b), True
 
     def _seg_free(self, g: Grid, a, b) -> bool:
-        L = math.hypot(b[0] - a[0], b[1] - a[1])
-        t = np.linspace(0.0, 1.0, max(2, int(math.ceil(L / (self.p.res / 2))) + 1))
-        x = a[0] + t * (b[0] - a[0])
-        y = a[1] + t * (b[1] - a[1])
-        j = np.floor((x - g.x0) / g.res).astype(int)
-        i = np.floor((y - g.y0) / g.res).astype(int)
+        """True if every cell the segment a->b passes through is free. Exact traversal: the segment is
+        cut at every grid line it crosses and the cell of each piece's midpoint is tested, so a corner
+        clip shorter than a sample step cannot slip through (point sampling could miss it). A cell the
+        segment only touches at a corner (zero-length piece) does not count: with the half-cell growth
+        in occupancy its corner is still >= inflate from the obstacle."""
         H, W = g.occ.shape
-        if i.min() < 0 or j.min() < 0 or i.max() >= H or j.max() >= W:
+        r = g.res
+        ax, ay = (a[0] - g.x0) / r, (a[1] - g.y0) / r          # cell units
+        bx, by = (b[0] - g.x0) / r, (b[1] - g.y0) / r
+        if min(ax, bx) < 0 or min(ay, by) < 0 or max(ax, bx) >= W or max(ay, by) >= H:
             return False
+        dx, dy = bx - ax, by - ay
+        parts = [np.array([0.0, 1.0])]
+        if dx != 0.0:                                          # vertical grid lines crossed
+            k = np.arange(math.ceil(min(ax, bx)), math.floor(max(ax, bx)) + 1)
+            parts.append((k - ax) / dx)
+        if dy != 0.0:                                          # horizontal grid lines crossed
+            k = np.arange(math.ceil(min(ay, by)), math.floor(max(ay, by)) + 1)
+            parts.append((k - ay) / dy)
+        t = np.sort(np.concatenate(parts))
+        mid = ((t[:-1] + t[1:]) / 2)[np.diff(t) > 1e-9]       # drop zero-length pieces (corner touches)
+        j = (ax + mid * dx).astype(int)                        # floor: everything is >= 0 here
+        i = (ay + mid * dy).astype(int)
         return not g.occ[i, j].any()
 
     def _pull(self, g: Grid, nodes):
@@ -219,8 +241,13 @@ class Planner:
                     del out[m]
                     changed = True
                     break
-        return [p for m, p in enumerate(out)
-                if m == 0 or m == len(out) - 1 or math.dist(p, out[m - 1]) > 1e-9]
+        kept = [out[0]]
+        for p in out[1:]:                                      # no zero-length edges (goal == last cell centre)
+            if math.dist(p, kept[-1]) > 1e-9:
+                kept.append(p)
+        if len(kept) == 1:                                     # start == goal: keep one edge for the follower
+            kept.append(out[-1])
+        return kept
 
     def _line_samples(self, a, b):
         L = float(np.hypot(*(b - a)))
@@ -231,9 +258,14 @@ class Planner:
         """Centre of the longest free run of samples along the gate line, and its width (span
         between the blocked samples on either side, so within one sample step)."""
         pts, step = self._line_samples(a, b)
-        free = np.array([g.free(x, y) for x, y in pts])
+        H, W = g.occ.shape
+        j = np.floor((pts[:, 0] - g.x0) / g.res).astype(int)   # vectorised cell lookup (was per-sample)
+        i = np.floor((pts[:, 1] - g.y0) / g.res).astype(int)
+        ok = (i >= 0) & (j >= 0) & (i < H) & (j < W)
+        free = np.zeros(len(pts), dtype=bool)
+        free[ok] = ~g.occ[i[ok], j[ok]]
         best, cur = (0, -1), None
-        for k, f in enumerate(free):
+        for k, f in enumerate(free.tolist()):
             if f and cur is None:
                 cur = k
             if (not f or k == len(free) - 1) and cur is not None:
@@ -247,7 +279,8 @@ class Planner:
 
     # ------------------------------------------------------ failure diagnostics
     def _dists(self, z, X, Y):
-        """Per-obstacle distance (in the inflation metric: grown rectangles / circles / net)."""
+        """Per-obstacle distance (in the inflation metric: grown rectangles / circles / net).
+        X, Y broadcast against each other (1-D samples, or (1, W) x (H, 1) for a whole grid)."""
         z0, z1 = z - self.p.z_band_m, z + self.p.z_band_m
         names, out = [], []
         for bx in self.course.boxes_at(z0, z1):
@@ -262,7 +295,7 @@ class Planner:
         (nx0, nx1), (ny0, ny1) = self.course.net_x, self.course.net_y
         names.append("net")
         out.append(np.minimum(np.minimum(X - nx0, nx1 - X), np.minimum(Y - ny0, ny1 - Y)))
-        return names, np.stack(out)
+        return names, np.stack(np.broadcast_arrays(*out))
 
     def _open_width(self, z, a, b) -> float:
         pts, step = self._line_samples(a, b)
@@ -277,8 +310,8 @@ class Planner:
     def _gap(self, z, r, g: Grid, s, t) -> str:
         """The narrowest gap on the widest route from cell s to cell t (maximin path)."""
         H, W = g.occ.shape
-        X = g.x0 + (np.arange(W)[None, :] + 0.5) * g.res + 0 * np.arange(H)[:, None]
-        Y = g.y0 + (np.arange(H)[:, None] + 0.5) * g.res + 0 * np.arange(W)[None, :]
+        X = (g.x0 + (np.arange(W) + 0.5) * g.res)[None, :]    # broadcast instead of two full meshgrids
+        Y = (g.y0 + (np.arange(H) + 0.5) * g.res)[:, None]
         names, D = self._dists(z, X, Y)
         b, (i, j) = _widest(D.min(axis=0), s, t)
         x, y = g.center(i, j)
@@ -300,14 +333,19 @@ def _astar(occ: np.ndarray, s, t):
     W2 = W + 2
     free = (~np.pad(occ, 1, constant_values=True)).ravel().tolist()
     si, ti = (s[0] + 1) * W2 + s[1] + 1, (t[0] + 1) * W2 + t[1] + 1
-    tr, tc = divmod(ti, W2)
     N = len(free)
+    # octile heuristic (x 1.001 tie-break) for every padded cell once, in numpy: the inner loop then does
+    # one list lookup per relaxation instead of divmod + abs + max/min
+    dr = np.abs(np.arange(H + 2) - (t[0] + 1))[:, None]
+    dc = np.abs(np.arange(W2) - (t[1] + 1))[None, :]
+    hval = (1.001 * (np.maximum(dr, dc) + (_SQ2 - 1) * np.minimum(dr, dc))).ravel().tolist()
     gcost, parent, closed = [math.inf] * N, [-1] * N, bytearray(N)
     gcost[si] = 0.0
     heap = [(0.0, 0.0, si)]
     moves = _moves(W2)
+    heappop, heappush = heapq.heappop, heapq.heappush
     while heap:
-        _, gu, u = heapq.heappop(heap)
+        _, gu, u = heappop(heap)
         if u == ti:
             out = []
             while u != -1:
@@ -320,15 +358,12 @@ def _astar(occ: np.ndarray, s, t):
         closed[u] = 1
         for dv, cost, o1, o2 in moves:
             v = u + dv
-            if not free[v] or closed[v] or (o1 and not (free[u + o1] and free[u + o2])):
+            if closed[v] or not free[v] or (o1 and not (free[u + o1] and free[u + o2])):
                 continue
             ng = gu + cost
             if ng < gcost[v]:
                 gcost[v], parent[v] = ng, u
-                vr, vc = divmod(v, W2)
-                dr, dc = abs(vr - tr), abs(vc - tc)
-                h = max(dr, dc) + (_SQ2 - 1) * min(dr, dc)
-                heapq.heappush(heap, (ng + 1.001 * h, ng, v))
+                heappush(heap, (ng + hval[v], ng, v))
     return None
 
 

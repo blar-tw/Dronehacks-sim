@@ -1,7 +1,26 @@
-# nav settings (ARCHITECTURE.md). Only values that differ from the dataclass defaults in
-# nav/planner.py, follower.py, landmarks.py, aligner.py, mission.py. Unknown keys are an error.
-# Override one at run time: python3 main.py -p overrides:='{"mission.chicane": "chicane_window"}'
+# nav settings (ARCHITECTURE.md, context/DECISIONS.md). One section per module (planner, follower,
+# landmarks, aligner, mission); the dataclass defaults in nav/*.py apply to anything not listed.
+# Unknown keys are an error. Override one at run time:
+#   python3 main.py -p overrides:='{"mission.chicane": "chicane_window"}'
+#
+# Team decisions pinned here on purpose (same as the MissionParams defaults, so a stale yaml and
+# the code never disagree):
+#   decision 3 coast through the tunnel  -> tunnel_speed_mps, tunnel_back_out_s (mission.py tunnel mode)
+#   decision 5 stop-and-go               -> follower.stop_every_vertex (hold corner_hold_s at every path
+#                                           vertex, ~2.3-3 s each, ~35-45 s per course); the mission's
+#                                           segment_timeout_s is 90 s so the holds never reach the ladder
+#   decision 6 no safety layer           -> depth_stale_hover_s 0: NO live obstacle check, map only
+#   decision 7 no extra sensors          -> nothing here reads a ToF; height is PX4's own estimate
+#   decision 8 land by position          -> the pad is a map target: descend to land_descend_z_m, AUTO_LAND
+#   open: cruise height                  -> 0.80 m kept (window opening 0.30..1.22 m, centre 0.76 m)
+#   open: Gate B or window               -> Gate B first (bank the run), window (+5) as the fallback
+follower:
+  stop_every_vertex: true          # decision 5: stop-and-go
 mission:
-  chicane: chicane_gate_b          # bank a finished run first (strategy.md); window is +5
+  segment_timeout_s: 90.0          # longest segment ~6 m at 0.5 m/s + up to ~8 vertex holds, still < 90 s
+  cruise_z_m: 0.80
+  chicane: chicane_gate_b
   chicane_fallback: chicane_window
   return_leg: true
+  depth_stale_hover_s: 0.0
+  pad_miss_abort_m: 0.0            # > 0 skips the return leg when the estimate says the pad was missed by more
