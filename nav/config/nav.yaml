@@ -1,7 +1,0 @@
-# nav settings (ARCHITECTURE.md). Only values that differ from the dataclass defaults in
-# nav/planner.py, follower.py, landmarks.py, aligner.py, mission.py. Unknown keys are an error.
-# Override one at run time: python3 main.py -p overrides:='{"mission.chicane": "chicane_window"}'
-mission:
-  chicane: chicane_gate_b          # bank a finished run first (strategy.md); window is +5
-  chicane_fallback: chicane_window
-  return_leg: true

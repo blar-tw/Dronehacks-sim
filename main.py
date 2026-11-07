@@ -1,25 +1,33 @@
-"""Course mission entrypoint (ARCHITECTURE.md): map-aligned navigation through every checkpoint,
-pad landing, then the return leg. The code is in nav/; settings in nav/config/nav.yaml.
+"""Your companion program's entrypoint. The actual flight code is here in refnav/.
 
-`python3 main.py` runs the ROS node (nav/node.py). Extra ROS arguments pass through, e.g.
-python3 main.py -p overrides:='{"mission.chicane": "chicane_gate_b"}'.
-The previous refnav takeoff/hover program is kept as main_refnav.py (reference).
+Read/edit refnav/core.py for climb, hover, navigation and landing decisions;
+refnav/node.py publishes those decisions as native ROS 2/PX4 messages, and
+refnav/depth.py processes camera depth. See FLIGHT_CODE.md and tests/.
+
+The lab supplies this complete project; copy its source and dependencies for deployment.
+`python3 main.py` directly runs your ROS node, like on a hardware companion.
+The optional workbench Run button captures this project for managed
+recording and grading. Plain Python does not call the lab API or create a Run.
+Read onboard/README.md for perception bringup and native ROS examples.
 """
-import os
-import sys
-from pathlib import Path
+HEIGHT_M = 1.2      # metres above the take-off point
+HOVER_S = 5.0       # seconds to hold at that height before landing
+
+from importlib.util import find_spec  # noqa: E402
+from pathlib import Path              # noqa: E402
 
 PROJECT = Path(__file__).resolve().parent
+flight_package = find_spec("refnav")
+if (flight_package is None or flight_package.origin is None
+        or Path(flight_package.origin).resolve().parent != PROJECT / "refnav"):
+    raise SystemExit("Missing local refnav package: keep the complete refnav/ source beside main.py. "
+                     "No hidden flight code is used.")
 
 if __name__ == "__main__":
-    sys.path.insert(0, str(PROJECT))
-    from nav import node
-    args = ["nav", "--ros-args"]
-    deployment = Path(os.environ.get("DRONE_PARAMS_FILE", "/etc/flyx/mission.yaml"))
-    if deployment.is_file():
-        args += ["--params-file", str(deployment)]     # use_sim_time etc. from the deployment
-    user = sys.argv[1:]
-    if user and user[0] == "--ros-args":
-        user = user[1:]
+    import sys
+    from refnav import node  # the editable package in this run's snapshot
+    from refnav.launch import arguments
     print(f"Flight source: {Path(node.__file__).parent} (this run's project)", flush=True)
-    node.main(args + user)
+    # Standard ROS parameter files. This project runs without runtime.program,
+    # FLYX_PROFILE or a cloud CLI on a normally configured physical companion.
+    node.main(arguments(PROJECT, height_m=HEIGHT_M, hover_s=HOVER_S, ros_args=sys.argv[1:]))

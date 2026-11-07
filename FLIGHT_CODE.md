@@ -1,8 +1,5 @@
 # This workspace contains the flight code that runs
 
-> **Team note (2026-11-06):** `main.py` now runs the course mission in `nav/` (see `../ARCHITECTURE.md`, `nav/SPEC.md`). The refnav program this file describes is `main_refnav.py`.
-
-
 `main.py` is the entrypoint, not the controller. The `refnav/` folder next to it
 is ordinary editable Python source. **This local package flies the mission**;
 it is not a display copy of a hidden managed controller.

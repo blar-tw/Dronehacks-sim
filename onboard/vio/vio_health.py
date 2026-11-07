@@ -18,7 +18,6 @@ class VioHealth:
         self._last_bad_t = None
         self.reason = "no samples"
         self.n_bad = 0
-        self.sample_bad = False         # the latest sample itself was insane (not just settling)
 
     def update(self, t, pos):
         """-> (ok, reason). t in seconds (measurement time), pos a 3-tuple in any consistent frame."""
@@ -39,7 +38,6 @@ class VioHealth:
         if finite and (self._last is None or t > self._last[0]):
             self._last = (t, tuple(float(c) for c in pos))
         tb = t if math.isfinite(t) else (self._last[0] if self._last else 0.0)
-        self.sample_bad = bool(bad)
         if bad:
             self.n_bad += 1
             self._last_bad_t = tb
@@ -72,11 +70,7 @@ class VioLoss:
     Weak tracking (fewer than min_features in a frame): keep sending, with the
     position and velocity sigma growing with the time since the last visually
     tracked frame, up to a cap. Insane samples (VioHealth) are withheld for at
-    most withhold_max_s, then sent anyway at the capped sigma with one reset.
-
-    Only settling samples are forced out: a sample that is itself insane (fresh_bad: a
-    new jump or impossible speed) restarts the withhold clock, so a VIO that keeps
-    running away stays WITHHELD and the mission lands on it (withheld_land_s)."""
+    most withhold_max_s, then sent anyway at the capped sigma with one reset."""
 
     def __init__(self, *, min_features=30, pos_sigma_rate=0.25, pos_sigma_max=0.5,
                  vel_sigma_rate=0.25, vel_sigma_max=0.5, withhold_max_s=2.0):
@@ -98,9 +92,9 @@ class VioLoss:
     def lost_s(self, t):
         return math.inf if self.last_visual is None else t - self.last_visual
 
-    def decide(self, t, sane, fresh_bad=False):
+    def decide(self, t, sane):
         if not sane:
-            if self.withheld_since is None or fresh_bad:
+            if self.withheld_since is None:
                 self.withheld_since = t
             if t - self.withheld_since < self.withhold_max_s:
                 return Decision(False, "WITHHELD", 0.0, 0.0, False, False)
