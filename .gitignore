@@ -9,3 +9,6 @@ log/
 *.bag
 *.mcap
 ws_snapshot.tgz
+
+# ros2 bags and event logs (development only, rule 6.4)
+logs/
