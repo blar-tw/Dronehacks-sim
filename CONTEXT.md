@@ -6,7 +6,7 @@ Work in the cloud lab shows up here only after it's pushed.
 
 ## Decisions
 
-_Latest version, from `context-layer`._
+_Latest version, from `main`._
 
 # Team decisions
 
@@ -43,8 +43,10 @@ agent sees the change. Numbers match the Approaches tab on DroneHacks HQ.
 
 ## Branches
 
-### context-layer (1 ahead of main, 0 behind)
+### main
 
+- `afb102e` Justin Yu, Fri Nov 06 19:20: Merge pull request #1 from blar-tw/context-layer
+  Add a combined team context layer
 - `7779159` Justin Yu, Fri Nov 06 17:11: Add a combined team context layer
   tools/team_context.py merges every branch's recent commits, changed files
   and context/DECISIONS.md into one view. Claude Code loads it at session
@@ -52,10 +54,14 @@ agent sees the change. Numbers match the Approaches tab on DroneHacks HQ.
   Records the team's decisions so far, with open conflicts listed.
   The workflow and hook only apply to branches that contain them, so this
   needs merging into main, and existing branches need main merged in.
+- `c0b8e90` blar, Thu Nov 05 12:31: Lab workspace snapshot 2026-11-05 (Vision world, READY, disarmed)
+  Project files from /var/lib/flyx-lab/workspace plus read-only
+  inspection output in lab_info/ (lab_inspect.sh).
 
-Files changed: `.claude/settings.json`, `.github/workflows/team-context.yml`, `AGENTS.md`, `CLAUDE.md`, `context/DECISIONS.md`, `tools/team_context.py`
+### context-layer (0 ahead of main, 1 behind)
 
-### localization-mvp (2 ahead of main, 0 behind)
+
+### localization-mvp (2 ahead of main, 2 behind)
 
 - `ddbd236` blar, Fri Nov 06 16:48: Add the DroneHacks course files
   Official v3 course (OBJ/MTL, GLB, STEP) and course_map.yaml, the course
@@ -71,17 +77,11 @@ Files changed: `.claude/settings.json`, `.github/workflows/team-context.yml`, `A
 
 Files changed: `ARCHITECTURE.md`, `course/course-v3.glb`, `course/course_map.yaml`, `course/course_top.png`, `course/dronehacks-course-v3.step`, `course/obj/README.txt`, `course/obj/dronehacks-course-v3.mtl`, `course/obj/dronehacks-course-v3.obj`, `onboard/config/vision_bridge.yaml`, `onboard/vio/ev_bridge.py`, `onboard/vio/vio_health.py`, `tests/test_vio_loss.py`
 
-### hq-site (1 ahead of main, 0 behind)
+### hq-site (1 ahead of main, 2 behind)
 
 - `f4074f4` Justin Yu, Fri Nov 06 16:43: Add DroneHacks HQ team site
 
 Files changed: `hq/course3d.png`, `hq/drone.png`, `hq/index.html`, `hq/map.png`
-
-### main
-
-- `c0b8e90` blar, Thu Nov 05 12:31: Lab workspace snapshot 2026-11-05 (Vision world, READY, disarmed)
-  Project files from /var/lib/flyx-lab/workspace plus read-only
-  inspection output in lab_info/ (lab_inspect.sh).
 
 ## Files changed on more than one branch
 
