@@ -97,8 +97,10 @@ class Course:
         return [c for c in self.cylinders if c.covers_z(z0, z1)]
 
     def tube_boxes(self, z0: float, z1: float) -> List[Box]:
-        """The oval tube seen in the band [z0, z1]: two side walls along its axis (y), placed at the
-        narrowest interior half-width found in the band. Outside the tube's height it is solid."""
+        """The oval tube seen in the band [z0, z1]: two side walls along its axis (y), their inner
+        faces at the narrowest INTERIOR half-width found in the band (the bounding box in the map is
+        the outer shell; the interior is the shell minus tube_wall_m). Outside the tube's height, or
+        where the band runs into the roof/floor, it is solid."""
         if not self.tube:
             return []
         (x0, x1), (y0, y1), (tz0, tz1) = self.tube["x"], self.tube["y"], self.tube["z"]
@@ -107,13 +109,14 @@ class Course:
         cx, a = (x0 + x1) / 2, (x1 - x0) / 2
         cz, b = (tz0 + tz1) / 2, (tz1 - tz0) / 2
         half = a
-        for z in (max(z0, tz0), min(z1, tz1)):
+        for z in (max(z0, tz0), min(z1, tz1)):             # the ellipse is widest at cz: extremes bound the band
             u = (z - cz) / b
             half = min(half, a * math.sqrt(max(0.0, 1.0 - u * u)))
-        ly, cy = y1 - y0, (y0 + y1) / 2
-        if half <= self.tube_wall_m:                       # band runs into the roof/floor: solid
-            return [Box("tube_solid", cx, cy, ly, 2 * a, tz0, tz1, math.pi / 2)]
         t = self.tube_wall_m
+        half -= t                                          # outer shell -> interior (was: shell placed outside)
+        ly, cy = y1 - y0, (y0 + y1) / 2
+        if half <= 0.0:                                    # band runs into the roof/floor: solid
+            return [Box("tube_solid", cx, cy, ly, 2 * a, tz0, tz1, math.pi / 2)]
         return [Box("tube_west", cx - half - t / 2, cy, ly, t, tz0, tz1, math.pi / 2),
                 Box("tube_east", cx + half + t / 2, cy, ly, t, tz0, tz1, math.pi / 2)]
 
@@ -218,27 +221,28 @@ def _fill_polygon(occ, x0, y0, res, poly):
     i0, i1 = max(0, int((lo[1] - y0) / res)), min(occ.shape[0] - 1, int((hi[1] - y0) / res) + 1)
     if j1 < j0 or i1 < i0:
         return
-    xs = x0 + (np.arange(j0, j1 + 1) + 0.5) * res
-    ys = y0 + (np.arange(i0, i1 + 1) + 0.5) * res
-    X, Y = np.meshgrid(xs, ys)
-    inside = np.ones_like(X, dtype=bool)
+    X = (x0 + (np.arange(j0, j1 + 1) + 0.5) * res)[None, :]   # broadcast rows x cols: no meshgrid copies
+    Y = (y0 + (np.arange(i0, i1 + 1) + 0.5) * res)[:, None]
+    inside = np.ones((i1 - i0 + 1, j1 - j0 + 1), dtype=bool)
     n = len(poly)
-    sign = None
+    area = sum((poly[m][0] * poly[(m + 1) % n][1] - poly[(m + 1) % n][0] * poly[m][1]) for m in range(n))
+    sign = 1.0 if area > 0 else -1.0                        # CCW: interior has cross >= 0 on every edge
     for k in range(n):
         ax, ay = poly[k]
         bx, by = poly[(k + 1) % n]
-        cross = (bx - ax) * (Y - ay) - (by - ay) * (X - ax)
-        if sign is None:
-            area = sum((poly[m][0] * poly[(m + 1) % n][1] - poly[(m + 1) % n][0] * poly[m][1]) for m in range(n))
-            sign = 1.0 if area > 0 else -1.0
-        inside &= sign * cross >= 0
+        inside &= sign * ((bx - ax) * (Y - ay) - (by - ay) * (X - ax)) >= 0
     occ[i0:i1 + 1, j0:j1 + 1] |= inside
 
 
 def occupancy(course: Course, z0: float, z1: float, inflate: float, res: float = 0.05,
               net_margin: Optional[float] = None) -> Grid:
     """Obstacles overlapping the height band [z0, z1], each grown by `inflate` metres, plus the
-    net (grown by net_margin, default `inflate`). Cells outside the net are occupied."""
+    net (grown by net_margin, default `inflate`). Cells outside the net are occupied.
+
+    Cells are marked by their CENTRE, so a cell can stick out up to half a cell past the grown
+    footprint. Each footprint is therefore grown by the cell's half-extent along its own axes as well
+    (res/2 for an axis-aligned box, (res/2)(|cos yaw| + |sin yaw|) for a yawed one, the half-diagonal
+    for a disc), which makes every point of every FREE cell >= inflate from every real obstacle."""
     nx0, nx1 = course.net_x
     ny0, ny1 = course.net_y
     W = int(math.ceil((nx1 - nx0) / res))
@@ -246,12 +250,13 @@ def occupancy(course: Course, z0: float, z1: float, inflate: float, res: float =
     occ = np.zeros((H, W), dtype=bool)
     g = Grid(nx0, ny0, res, occ)
     for b in course.boxes_at(z0, z1):
-        _fill_polygon(occ, nx0, ny0, res, b.corners(grow=inflate))
-    xs = nx0 + (np.arange(W) + 0.5) * res
-    ys = ny0 + (np.arange(H) + 0.5) * res
-    X, Y = np.meshgrid(xs, ys)
+        cell = res / 2 * (abs(math.cos(b.yaw)) + abs(math.sin(b.yaw)))   # square's support along the box axes
+        _fill_polygon(occ, nx0, ny0, res, b.corners(grow=inflate + cell))
+    X = (nx0 + (np.arange(W) + 0.5) * res)[None, :]          # broadcast instead of two full meshgrids
+    Y = (ny0 + (np.arange(H) + 0.5) * res)[:, None]
     for c in course.cylinders_at(z0, z1):
-        occ |= (X - c.cx) ** 2 + (Y - c.cy) ** 2 <= (c.radius + inflate) ** 2
-    m = inflate if net_margin is None else net_margin
+        rr = c.radius + inflate + res / math.sqrt(2.0)        # half-diagonal: any point of the cell
+        occ |= (X - c.cx) ** 2 + (Y - c.cy) ** 2 <= rr * rr
+    m = (inflate if net_margin is None else net_margin) + res / 2
     occ |= (X < nx0 + m) | (X > nx1 - m) | (Y < ny0 + m) | (Y > ny1 - m)
     return g

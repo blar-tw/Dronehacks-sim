@@ -9,7 +9,8 @@ Flow (phases):
   climb    vertical altitude change at the current xy (takeoff, and before a segment at another z)
   fly      follow the planned path of the current segment
   hover    failure ladder: segment timed out, carrot frozen for hover_s
-  back_off failure ladder: carrot moved back back_off_m, then replan (replans times), then land
+  back_off failure ladder: carrot moved back back_off_m, then replan (replans times), then land;
+           inside the tube the carrot is first reversed at tunnel speed until the aircraft is out
   descend  over the landing target, down to land_descend_z_m
   land     PX4 AUTO_LAND; streaming stops once nav_state 18 is seen; disarm when landed
   ground   disarmed on the pad, ground_wait_s before the return leg re-arms (wait -> arm -> ...)
@@ -22,10 +23,15 @@ The tunnel segment is the gate whose line lies on the course's tube bounding box
 name): inside the tube it flies at tunnel speed, ignores depth staleness and VIO WITHHELD, and the
 aligner is not updated until the gate is crossed.
 
+Frames: a gate crossing is judged from the aircraft's MOTION in odom, both ends mapped through the
+same aligner transform, so an aligner correction between two ticks is never a crossing. Map z is
+anchored at takeoff: the launch mark is the map floor (z 0), whatever PX4's local z origin is.
+
 Safety behaviour kept from refnav.core: health gate before arming; PX4 leaving Offboard while
 airborne is never fought ('yielded'); PX4 owns every landing (no streaming after AUTO_LAND);
 unhealthy/silent estimator lands. Rule 7.7: in the main run the commanded z never exceeds
-wall_top - wall_margin_m (clamped and logged).
+wall_top - wall_margin_m (clamped and logged). Team decision 6: there is NO live obstacle check;
+the planned path is flown against the map only.
 """
 from __future__ import annotations
 
@@ -43,20 +49,25 @@ AIRBORNE = ("climb", "fly", "hover", "back_off", "descend")
 
 @dataclass
 class MissionParams:
-    cruise_z_m: float = 0.80
+    cruise_z_m: float = 0.80           # open team question: kept at ARCHITECTURE's 0.8 m (window 0.30..1.22 m)
     return_clearance_m: float = 0.50   # return altitude = wall_top + this (rule 7.10 exception)
-    chicane: str = "chicane_window"    # name of the checkpoint to use where an id has several
-    chicane_fallback: str = "chicane_gate_b"   # tried if planning through `chicane` fails ("" = none)
+    chicane: str = "chicane_gate_b"    # team: bank a finished run first; the window (+5) is the fallback
+    chicane_fallback: str = "chicane_window"   # tried if planning through `chicane` fails ("" = none)
     return_leg: bool = True
     speed_mps: float = 0.5
+    thin_margin_speed_scale: float = 0.6   # speed factor on a path the planner found only with reduced inflation
     tunnel_speed_mps: float = 0.3
-    segment_timeout_s: float = 60.0
+    segment_timeout_s: float = 90.0    # decision 5 stop-and-go adds ~3 s per path vertex; the ladder is for being stuck
+    vertical_timeout_s: float = 20.0   # a climb or descent not within climb_tol_m of its target by then lands
     hover_s: float = 2.0               # failure ladder: hold this long, then back off
     back_off_m: float = 0.4
     back_off_s: float = 2.0            # time given to the back-off before replanning
     replans: int = 1
+    tunnel_back_out_s: float = 15.0    # ladder landing inside the tube: reverse along the path at most this long
     land_descend_z_m: float = 0.30     # descend to this over the target, then PX4 land
     ground_wait_s: float = 2.0         # on the pad after disarm before the return takeoff
+    pad_miss_abort_m: float = 0.0      # > 0: the return leg is not flown if the map estimate puts the pad
+                                       # landing farther than this from the pad centre (0 = always fly it)
     vio_degraded_scale: float = 0.5
     depth_stale_hover_s: float = 0.0   # > 0: hold when no wall points this long (outside the tunnel, below
                                        # wall top). 0 = off: the forward camera facing the net sees no walls,
@@ -73,8 +84,8 @@ class MissionParams:
     disarm_delay_s: float = 0.5        # landed this long and still armed: send a (checked) disarm
     # arming / health, as refnav.core.Params
     health_quiet_s: float = 3.0
-    health_stale_s: float = 1.0
-    health_bad_land_s: float = 1.0
+    health_stale_s: float = 1.0        # ev_bridge publishes /estimator/healthy at 5 Hz: 4 dropped messages
+    health_bad_land_s: float = 1.0     # applies to a SILENT bridge; an unhealthy one also reports WITHHELD
     withheld_land_s: float = 3.0       # unhealthy while vio_state is WITHHELD (ev_bridge withholds <= 2 s)
     stream_lead_s: float = 1.0
     wait_s: float = 300.0
@@ -157,6 +168,13 @@ def _side(p, a, b) -> float:
     return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])
 
 
+def in_opening(cp, z) -> bool:
+    """z lies within the checkpoint's opening (window bottom/top); gates without one accept any z."""
+    if cp.zmin <= 0.0 and not math.isfinite(cp.zmax):
+        return True
+    return cp.zmin <= z <= cp.zmax
+
+
 class Mission:
     def __init__(self, course, planner, follower, aligner, params: MissionParams | None = None):
         self.course, self.planner, self.follower, self.aligner = course, planner, follower, aligner
@@ -178,15 +196,19 @@ class Mission:
         self.replans_used = 0
         self.tunnel_active = self.tunnel_done = False
         self.t_tunnel = None
+        self.back_out, self.back_out_why = False, ""   # ladder landing deferred until out of the tube
         self.pos_map = self.pos_odom = self.prev_map = self.prev_odom = None
         self.aligner_ready = False
+        self.z_anchored = False
         self.takeoff_odom = None
         self.passed = []                      # [{"id", "name", "t", "elapsed_s"}]
         self.land_kind = self.land_reason = None
         self.land_auto_seen = False
         self.landed_since = None
         self.land_request = self.stop_request = None
-        self.pts_t = None
+        self.depth_alive_t = None             # last on_points call of any content: the depth stream is alive
+        self.walls_t = None                   # last NON-empty call: the aligner had input
+        self.depth_stamp = None               # capture stamp of the last frame taken (when the caller gives one)
         self.vio_state, self.vio_lost_s = "UNKNOWN", 0.0
         self.last_align = None
         self.speed_scale = None
@@ -194,7 +216,7 @@ class Mission:
         self.z_cap = course.wall_top - p.wall_margin_m
         self.clamping = False
         self.counts = {"plans": 0, "align_accepted": 0, "align_rejected": 0, "align_skipped_tunnel": 0,
-                       "point_frames": 0, "z_clamps": 0}
+                       "point_frames": 0, "empty_frames": 0, "depth_out_of_order": 0, "z_clamps": 0}
 
     # ------------------------------------------------------------------ inputs
     def on_health(self, t, ok):
@@ -206,18 +228,30 @@ class Mission:
             self._pending.append(f"vio_state {self.vio_state} -> {state} (lost {float(lost_s):.1f} s)")
         self.vio_state, self.vio_lost_s = state, float(lost_s)
 
-    def on_points(self, t, points_odom_xy, z):
+    def on_points(self, t, points_odom_xy, z, stamp=None):
+        """Wall points (odom xy) of one usable depth frame, at odom height z. An EMPTY array is a
+        live camera that saw nothing at flight height (the net, open space), so it keeps the depth
+        stream alive; a frame that was unusable or rejected is simply not reported. `stamp`
+        (capture time, optional): a frame stamped no later than the last one taken is dropped."""
+        if stamp is not None:
+            if self.depth_stamp is not None and stamp <= self.depth_stamp:
+                self.counts["depth_out_of_order"] += 1
+                return
+            self.depth_stamp = stamp
+        self.depth_alive_t = t
         pts = np.asarray(points_odom_xy, float).reshape(-1, 2)
         if len(pts) == 0:
+            self.counts["empty_frames"] += 1
             return
-        self.pts_t = t
+        self.walls_t = t
         self.counts["point_frames"] += 1
         if not self.aligner_ready or self.pos_odom is None:
             return
         if self.tunnel_active:
             self.counts["align_skipped_tunnel"] += 1
             return
-        r = self.aligner.update(pts, z, t, sensor_odom_xy=(self.pos_odom[0], self.pos_odom[1]))
+        # z arrives in odom; the aligner matches course.faces_at(z) in the MAP frame
+        r = self.aligner.update(pts, z + self.aligner.T.z, t, sensor_odom_xy=(self.pos_odom[0], self.pos_odom[1]))
         self.counts["align_accepted" if r.accepted else "align_rejected"] += 1
         if self.last_align is None or r.accepted != self.last_align.accepted:
             self._pending.append(f"aligner {'accepted' if r.accepted else 'rejected'}: {r.why} (n {r.n}, "
@@ -262,6 +296,16 @@ class Mission:
             self._event(out, "tunnel exit (landing)")
         self._set("land", now, out, why)
 
+    def _ladder_land(self, now, out, why):
+        """The failure ladder's last step. Landing inside the tube is never acceptable: back the carrot
+        out along the path at tunnel speed first (phase back_off with back_out set), then land."""
+        if self.tunnel_active and not self.back_out:
+            self.back_out, self.back_out_why = True, why
+            self.follower.hold()
+            self._set("back_off", now, out, f"{why}: backing out of the tube before landing")
+        else:
+            self._land(now, out, why)
+
     def _seg(self):
         return self.segments[self.seg_i]
 
@@ -273,7 +317,13 @@ class Mission:
                 and self._seg().z < self.course.wall_top)
 
     def _depth_age(self, now):
-        ref = self.t_airborne if self.pts_t is None else max(self.pts_t, self.t_airborne)
+        """Since the last usable depth frame of ANY content (the stream is dead when this grows)."""
+        ref = self.t_airborne if self.depth_alive_t is None else max(self.depth_alive_t, self.t_airborne)
+        return now - ref
+
+    def _walls_age(self, now):
+        """Since the last frame WITH wall points (the aligner has had no input since)."""
+        ref = self.t_airborne if self.walls_t is None else max(self.walls_t, self.t_airborne)
         return now - ref
 
     def _in_tube(self, pm):
@@ -337,7 +387,7 @@ class Mission:
             elif not v.pos_ok or v.pos is None:
                 self._land(now, out, "PX4 position or heading invalid")
             elif self._depth_matters() and self._depth_age(now) > p.depth_lost_land_s:
-                self._land(now, out, f"no depth points for {self._depth_age(now):.1f} s")
+                self._land(now, out, f"no usable depth frame for {self._depth_age(now):.1f} s")
             else:
                 if self.prev_odom is not None:
                     self.aligner.predict(math.hypot(self.pos_odom[0] - self.prev_odom[0],
@@ -352,7 +402,7 @@ class Mission:
         elif ph == "climb":
             self._climb(now, dt, out)
         elif ph in ("fly", "hover", "back_off"):
-            self._fly(now, out)
+            self._fly(now, dt, out)
         elif ph == "descend":
             self._descend(now, dt, out)
         elif ph == "ground":
@@ -384,6 +434,9 @@ class Mission:
 
     def _arm(self, now, out, v):
         p = self.p
+        if self.t_cmd is None and v.pos is not None and v.heading is not None:
+            # hold where PX4 says it is right up to the first request: no stale ground setpoint
+            self.sp_ned = [v.pos[0], v.pos[1], v.pos[2], v.heading]
         ok, why = self.health.arm_ok(now)
         if not ok:
             if self.t_cmd is None and v.armed is False:
@@ -408,12 +461,23 @@ class Mission:
         if not self.aligner_ready:             # main run: anchor the map at the launch mark, on the ground
             self.takeoff_odom, self.t_takeoff = (ox, oy, oz), now
             yaw_off = 0.0 if math.isnan(self.p.launch_yaw_deg) else F.wrap(math.radians(self.p.launch_yaw_deg) - oyaw)
-            self.aligner.init_at_launch((ox, oy), tuple(self.course.launch), yaw_offset=yaw_off)
+            launch = tuple(self.course.launch)
+            try:
+                # map z: the launch mark is the floor (z 0); PX4's local z origin is where its EKF
+                # started, not the floor. Needs the aligner's odom_z keyword
+                self.aligner.init_at_launch((ox, oy), launch, yaw_offset=yaw_off, odom_z=oz, launch_z=0.0)
+                self.z_anchored = True
+            except TypeError:                  # older aligner API: map z = PX4 local z (floor = EKF origin)
+                self.aligner.init_at_launch((ox, oy), launch, yaw_offset=yaw_off)
+                self.z_anchored = False
             self.aligner_ready = True
-            self._event(out, f"takeoff: odom ({ox:.2f}, {oy:.2f}, {oz:.2f}) heading {math.degrees(oyaw):.1f} deg -> "
-                             f"launch mark ({self.course.launch[0]:.2f}, {self.course.launch[1]:.2f}), "
-                             f"yaw offset {math.degrees(yaw_off):+.1f} deg")
+            self._event(out, f"takeoff: odom ({ox:.2f}, {oy:.2f}, {oz:.2f}) yaw {math.degrees(oyaw):.1f} deg (ENU) -> "
+                             f"launch mark ({launch[0]:.2f}, {launch[1]:.2f}), yaw offset {math.degrees(yaw_off):+.1f} deg, "
+                             + (f"floor z anchored (offset {-oz:+.2f} m)" if self.z_anchored else
+                                "floor z NOT anchored (aligner has no odom_z): map z = PX4 local z"))
         self.pos_map = self.aligner.to_map(ox, oy, oz, oyaw)
+        if self.leg == "return":
+            self._event(out, f"return takeoff: map z on the pad {self.pos_map[2]:+.2f} m (PX4 z drift since launch)")
         self.sp_map = list(self.pos_map)
         self.t_airborne = now
         self._begin_segment(now, out)
@@ -435,6 +499,10 @@ class Mission:
         self.sp_map[2] = target if abs(target - z) <= step else z + math.copysign(step, target - z)
         if self.sp_map[2] == target and abs(self.pos_map[2] - target) < self.p.climb_tol_m:
             self._plan(now, out)
+        elif now - self.t_phase > self.p.vertical_timeout_s:
+            # the aircraft never got there (did not leave the ground, PX4 z disagrees): no silent hover
+            self._land(now, out, f"climb to {target:.2f} m not reached in {self.p.vertical_timeout_s:.0f} s "
+                                 f"(z {self.pos_map[2]:.2f} m)")
 
     def _plan(self, now, out):
         seg = self._seg()
@@ -448,7 +516,7 @@ class Mission:
             if path.ok:
                 break
             if not seg.options:
-                self._land(now, out, f"planner: no path to {seg.name}: {path.why}")
+                self._ladder_land(now, out, f"planner: no path to {seg.name}: {path.why}")
                 return
             alt = seg.options.pop(0)
             self._event(out, f"planner: no path through {seg.name} ({path.why}); trying {alt}")
@@ -460,7 +528,17 @@ class Mission:
             ci = path.cross_index
             q0, q1 = (pts[ci], pts[ci + 1]) if ci is not None else (pts[0], pts[-1])
             self.cross_sign = 1 if _side(q1, a, b) - _side(q0, a, b) > 0 else -1
-        self.follower.set_path(path.pts, now, self.pos_map[:3], self.pos_map[3], speed_mps=self.p.speed_mps)
+        # the planner may have shrunk its inflation to find this path: say so, and fly it slower
+        speed = self.p.speed_mps
+        notes = getattr(path, "notes", "")
+        if notes:
+            self._event(out, f"planner notes for {seg.name}: {notes}")
+        full = getattr(self.planner, "inflate_m", None)
+        if callable(full) and getattr(path, "inflate_m", 0.0) and path.inflate_m < full() - 1e-6:
+            speed *= self.p.thin_margin_speed_scale
+            self._event(out, f"{seg.name}: inflation {path.inflate_m:.2f} m < {full():.2f} m, "
+                             f"speed {speed:.2f} m/s")
+        self.follower.set_path(path.pts, now, self.pos_map[:3], self.pos_map[3], speed_mps=speed)
         self.seg_t0 = now
         length = sum(math.dist(path.pts[i][:2], path.pts[i + 1][:2]) for i in range(len(path.pts) - 1))
         self._set("fly", now, out, f"segment {self.seg_i + 1}/{len(self.segments)} {seg.name}"
@@ -476,27 +554,47 @@ class Mission:
             scale, why = 0.0, "VIO WITHHELD"
         elif self.vio_state == "DEGRADED":
             scale = p.vio_degraded_scale
-        if p.depth_stale_hover_s > 0 and self._depth_matters() and self._depth_age(now) >= p.depth_stale_hover_s:
+        if p.depth_stale_hover_s > 0 and self._depth_matters() and self._walls_age(now) >= p.depth_stale_hover_s:
             scale, why = 0.0, "no depth points"
         return scale, why
 
-    def _fly(self, now, out):
+    def _past_gate(self, pm, seg):
+        """pm is on the far side of the gate line, within the line's extent."""
+        a, b = seg.cp.line
+        if _side(pm, a, b) * self.cross_sign <= 0:
+            return False
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        u = ((pm[0] - a[0]) * dx + (pm[1] - a[1]) * dy) / (dx * dx + dy * dy)
+        return 0.0 <= u <= 1.0
+
+    def _gate_crossed(self, now, out, seg, pm, how=""):
+        """Count the gate (also ends tunnel mode), unless the crossing is outside the opening's height."""
+        cp = seg.cp
+        if not in_opening(cp, pm[2]):
+            self._event(out, f"{seg.name} crossed at z {pm[2]:.2f} m, outside its opening "
+                             f"{cp.zmin:.2f}..{cp.zmax:.2f} m: not counted")
+            return
+        self.crossed = True
+        if all(q["name"] != seg.name for q in self.passed):
+            self.passed.append({"id": cp.id, "name": seg.name, "t": now, "elapsed_s": self._elapsed(now)})
+        self._event(out, f"checkpoint {cp.id} {seg.name} crossed at {self._elapsed(now):.1f} s "
+                         f"({pm[0]:.2f}, {pm[1]:.2f}){how}")
+        if self.tunnel_active:
+            self.tunnel_active, self.tunnel_done = False, True
+            self._event(out, f"tunnel exit after {now - self.t_tunnel:.1f} s: re-aligning from depth")
+
+    def _fly(self, now, dt, out):
         p, seg, pm = self.p, self._seg(), self.pos_map
         if seg.tunnel and not self.tunnel_active and not self.tunnel_done and self._in_tube(pm):
             self.tunnel_active, self.t_tunnel = True, now
             self._event(out, f"tunnel enter at ({pm[0]:.2f}, {pm[1]:.2f}): aligner sigma {self.aligner.sigma_xy():.3f} m, "
                              f"depth ignored, {p.tunnel_speed_mps:.2f} m/s")
-        if seg.kind == "gate" and self.prev_map is not None:
-            c = crossing(self.prev_map, pm, *seg.cp.line)
+        if seg.kind == "gate" and self.prev_odom is not None:
+            # the track is the aircraft's odom MOTION under the current transform: an aligner correction
+            # between two ticks moves pos_map but is not a crossing
+            c = crossing(self.aligner.to_map(*self.prev_odom), pm, *seg.cp.line)
             if c == self.cross_sign:
-                self.crossed = True
-                if all(q["name"] != seg.name for q in self.passed):
-                    self.passed.append({"id": seg.cp.id, "name": seg.name, "t": now, "elapsed_s": self._elapsed(now)})
-                self._event(out, f"checkpoint {seg.cp.id} {seg.name} crossed at {self._elapsed(now):.1f} s "
-                                 f"({pm[0]:.2f}, {pm[1]:.2f})")
-                if self.tunnel_active:
-                    self.tunnel_active, self.tunnel_done = False, True
-                    self._event(out, f"tunnel exit after {now - self.t_tunnel:.1f} s: re-aligning from depth")
+                self._gate_crossed(now, out, seg, pm)
             elif c:
                 self.crossed = False
                 self._event(out, f"{seg.name} crossed in the WRONG direction at ({pm[0]:.2f}, {pm[1]:.2f}): not counted")
@@ -504,7 +602,7 @@ class Mission:
         if self.phase == "fly":
             scale, why = self._scale(now)
             if why != self.hold_why:
-                self._event(out, f"hold: {why} (depth age {self._depth_age(now):.1f} s, vio {self.vio_state})"
+                self._event(out, f"hold: {why} (walls age {self._walls_age(now):.1f} s, vio {self.vio_state})"
                             if why else f"resume ({self.hold_why} cleared)")
                 self.hold_why = why
         else:
@@ -514,6 +612,12 @@ class Mission:
         self.sp_map = [sp.x, sp.y, sp.z, sp.yaw]
 
         if self.phase == "fly":
+            if (sp.done and seg.kind == "gate" and not self.crossed and in_opening(seg.cp, pm[2])
+                    and self._past_gate(pm, seg)):
+                # at the path end (past the line by construction) with no counted track crossing: a
+                # missed tick or jitter back over the line must not strand the segment until it times out
+                # (a crossing outside the opening's height was already logged by the track check)
+                self._gate_crossed(now, out, seg, pm, how=" (from the position past the line)")
             if sp.done and (seg.kind != "gate" or self.crossed):
                 if seg.kind == "gate":
                     self.seg_i += 1
@@ -527,23 +631,35 @@ class Mission:
                     self._set("hover", now, out, f"{seg.name} timed out after {now - self.seg_t0:.0f} s "
                                                  f"(progress {sp.progress_m:.2f}/{sp.length_m:.2f} m): holding {p.hover_s:.0f} s")
                 else:
-                    self._land(now, out, f"{seg.name} timed out after {now - self.seg_t0:.0f} s and "
-                                         f"{self.replans_used} replan(s)")
+                    self._ladder_land(now, out, f"{seg.name} timed out after {now - self.seg_t0:.0f} s and "
+                                                f"{self.replans_used} replan(s)")
         elif self.phase == "hover" and now - self.t_phase >= p.hover_s:
             self.follower.back_off(p.back_off_m)
             self._set("back_off", now, out, f"backing off {p.back_off_m:.2f} m")
-        elif self.phase == "back_off" and now - self.t_phase >= p.back_off_s:
-            self.replans_used += 1
-            self._event(out, f"replan {self.replans_used}/{p.replans} for {seg.name} from ({pm[0]:.2f}, {pm[1]:.2f})")
-            self._plan(now, out)
+        elif self.phase == "back_off":
+            if self.back_out:
+                if not self._in_tube(pm) or now - self.t_phase >= p.tunnel_back_out_s:
+                    self._land(now, out, self.back_out_why + (" (out of the tube)" if not self._in_tube(pm)
+                                                              else f" (still in the tube after {p.tunnel_back_out_s:.0f} s)"))
+                else:
+                    self.follower.back_off(p.tunnel_speed_mps * dt)   # reverse the carrot smoothly
+            elif now - self.t_phase >= p.back_off_s:
+                self.replans_used += 1
+                self._event(out, f"replan {self.replans_used}/{p.replans} for {seg.name} from ({pm[0]:.2f}, {pm[1]:.2f})")
+                self._plan(now, out)
 
     def _descend(self, now, dt, out):
         target = self.p.land_descend_z_m
         z = self.sp_map[2]
         self.sp_map[2] = max(target, z - self.p.descend_rate_mps * dt)
+        seg = self._seg()
         if self.sp_map[2] == target and abs(self.pos_map[2] - target) < self.p.climb_tol_m:
-            seg = self._seg()
             self._land(now, out, f"on {seg.name}", kind=seg.kind)
+        elif now - self.t_phase > self.p.vertical_timeout_s:
+            # PX4's z never agreed (z drift put the target in the floor, or it will not go lower):
+            # we are over the target, so let PX4 land from here rather than press down for ever
+            self._land(now, out, f"on {seg.name} (descent to {target:.2f} m timed out at z {self.pos_map[2]:.2f} m)",
+                       kind=seg.kind)
 
     def _landing(self, now, out, v):
         p = self.p
@@ -560,6 +676,7 @@ class Mission:
             if now - self.landed_since >= p.disarm_delay_s and self._resend(now):
                 out.commands.append("disarm")
         if now - self.t_phase > p.land_timeout_s:
+            out.commands.append("disarm")      # checked (PX4 refuses it in the air): one last try, never forced
             self._end(now, out, f"aborted: {self.land_reason}; landing not confirmed within {p.land_timeout_s:.0f} s")
 
     def _landed(self, now, out):
@@ -573,6 +690,11 @@ class Mission:
                             "elapsed_s": self._elapsed(now)})
         self._event(out, f"landed and disarmed on {seg.name} at {self._elapsed(now):.1f} s, {d:.2f} m from its centre")
         if kind == "pad" and self.p.return_leg and self.stop_request is None and self.seg_i + 1 < len(self.segments):
+            if 0.0 < self.p.pad_miss_abort_m < d:
+                # the estimate itself says the pad was missed: the map pose is not trusted over the walls
+                self._end(now, out, f"aborted: landed {d:.2f} m from the pad centre by the map estimate "
+                                    f"(> pad_miss_abort_m {self.p.pad_miss_abort_m:.2f}); return leg not flown")
+                return
             self.seg_i += 1
             self._set("ground", now, out, f"waiting {self.p.ground_wait_s:.0f} s before the return leg")
         else:
@@ -583,15 +705,15 @@ class Mission:
         if self.sp_map is None:
             return tuple(self.sp_ned) if self.sp_ned is not None else None
         x, y, z, yaw = self.sp_map
-        xo, yo, zo, yawo = self.aligner.to_odom(x, y, z, yaw)
-        if self.leg == "main" and max(z, zo) > self.z_cap:          # rule 7.7
+        if self.leg == "main" and z > self.z_cap:          # rule 7.7, in the MAP frame (odom z is offset by T.z)
             if not self.clamping:
                 self.counts["z_clamps"] += 1
-                self._event(out, f"rule 7.7: commanded z {max(z, zo):.2f} m clamped to {self.z_cap:.2f} m")
+                self._event(out, f"rule 7.7: commanded z {z:.2f} m clamped to {self.z_cap:.2f} m")
             self.clamping = True
-            zo = min(zo, self.z_cap)
+            z = self.z_cap
         else:
             self.clamping = False
+        xo, yo, zo, yawo = self.aligner.to_odom(x, y, z, yaw)
         n, e, d = F.enu_to_ned(xo, yo, zo)
         return (n, e, d, F.yaw_to_heading(yawo))
 
@@ -605,18 +727,21 @@ class Mission:
         return {
             "phase": self.phase, "leg": self.leg, "why": self.why, "result": self.result,
             "segment": None if seg is None else {"index": self.seg_i, "count": len(self.segments), "name": seg.name,
-                                                  "kind": seg.kind, "z": r(seg.z), "tunnel": seg.tunnel},
+                                                  "kind": seg.kind, "z": r(seg.z), "tunnel": bool(seg.tunnel)},
             "segments": [s.name for s in self.segments],
             "tunnel_active": self.tunnel_active, "gate_crossed": self.crossed, "replans_used": self.replans_used,
+            "back_out": self.back_out,
             "passed": [{"id": q["id"], "name": q["name"], "t": r(q["t"], 2), "elapsed_s": r(q["elapsed_s"], 2)}
                        for q in self.passed],
             "aligner": None if T is None else {"x": r(T.x), "y": r(T.y), "yaw_deg": r(math.degrees(T.yaw), 2),
+                                               "z": r(T.z), "z_anchored": self.z_anchored,
                                                "sigma_xy_m": r(self.aligner.sigma_xy()),
                                                "last": None if la is None else {"accepted": bool(la.accepted),
                                                                                 "why": la.why, "n": int(la.n)}},
             "vio": {"state": self.vio_state, "lost_s": r(self.vio_lost_s, 2)},
             "speed_scale": r(self.speed_scale, 2), "hold": self.hold_why,
-            "depth_age_s": None if self.pts_t is None else r(now - self.pts_t, 2),
+            "depth_age_s": None if self.depth_alive_t is None else r(now - self.depth_alive_t, 2),
+            "walls_age_s": None if self.walls_t is None else r(now - self.walls_t, 2),   # aligner starved if large
             "health_bad_s": r(bad, 2),
             "setpoint_map": None if self.sp_map is None else [r(c) for c in self.sp_map],
             "pos_map": None if self.pos_map is None else [r(c) for c in self.pos_map],

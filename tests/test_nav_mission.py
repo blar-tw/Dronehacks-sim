@@ -96,11 +96,11 @@ class FakeAligner:
     def __init__(self):
         self.T, self.inits, self.updates = F.SE2(), [], []
 
-    def init_at_launch(self, odom_xy, launch_xy, yaw_offset=0.0):
+    def init_at_launch(self, odom_xy, launch_xy, yaw_offset=0.0, odom_z=None, launch_z=0.0):
         self.inits.append((tuple(odom_xy), tuple(launch_xy), yaw_offset))
         c, s = math.cos(yaw_offset), math.sin(yaw_offset)
         self.T = F.SE2(launch_xy[0] - (c * odom_xy[0] - s * odom_xy[1]), launch_xy[1] - (s * odom_xy[0] + c * odom_xy[1]),
-                       yaw_offset)
+                       yaw_offset, z=0.0 if odom_z is None else launch_z - odom_z)   # the aligner's odom_z keyword
 
     def predict(self, dist_m, odom_xy=(0.0, 0.0)):
         pass
@@ -305,3 +305,200 @@ def test_timeout_ladder_then_land_and_z_clamp():
     cap = c.wall_top - p.wall_margin_m
     assert any("rule 7.7" in e for e in r.events)
     assert max(-x.out.setpoint[2] for x in r.log if x.out.setpoint) <= cap + 1e-9
+
+
+# ------------------------------------------------------------ fixes from the mission review
+def test_an_aligner_jump_is_not_a_gate_crossing():
+    """The aligner moves the map 1.2 m across the gate line while the aircraft is still (and back
+    again later): neither move is a crossing, wrong-way or right-way. Only the real motion that
+    follows crosses g1, once."""
+    c = course([CP(1, "g1", line=((-1.5, 1.5), (1.5, 1.5))), CP(2, "pad", circle=(0.0, 3.0, 0.5))])
+    pl = FakePlanner(c, paths={"g1": ([(0.0, 1.15), (0.0, 2.3)], 1)})   # exit 0.8 m past the line
+    state = {}
+
+    def jump(t, m, px4):
+        if m.phase == "fly" and "t0" not in state and px4.truth[1] > 0.4:
+            state["t0"], state["frozen"] = t, px4.truth[:2].copy()
+        if "t0" in state and t - state["t0"] < 1.0:
+            px4.truth[:2] = state["frozen"]           # the aircraft does not move ...
+            m.aligner.T = F.SE2(0.0, 1.25)            # ... while the estimate jumps past the line
+        elif "t0" in state and "t1" not in state:
+            m.aligner.T = F.SE2()                     # and jumps back
+            state["t1"] = t
+    r = fly(c, MissionParams(return_leg=False, speed_mps=1.0), planner=pl, on_tick=jump)
+
+    assert "t1" in state
+    assert r.m.result == "complete", (r.m.result, r.events[-10:])
+    crossed = [e for e in r.events if "g1 crossed" in e or "crossed at" in e]
+    assert len(crossed) == 1 and "WRONG" not in crossed[0], crossed
+    t_cross = next(x.t for x in r.log if any("crossed at" in e for e in x.out.events))
+    assert t_cross > state["t1"]
+    assert [q["name"] for q in r.m.passed] == ["g1", "pad"]
+
+
+@pytest.mark.parametrize("z_off", [0.5, -0.4])
+def test_map_floor_is_anchored_at_the_launch_mark(z_off):
+    """PX4's local z origin is z_off above the floor (its EKF started there): the map floor is still
+    0 at takeoff, so the cruise height and the rule 7.7 cap are heights above the floor."""
+    c = course([CP(1, "g1", line=((-1.5, 1.5), (1.5, 1.5))), CP(2, "pad", circle=(0.0, 3.0, 0.5))])
+    p = MissionParams(return_leg=False, speed_mps=1.0, cruise_z_m=1.3)
+    r = fly(c, p, T_odom=F.SE2(0.0, 0.0, 0.0, z_off))
+
+    assert r.m.result == "complete", (r.m.result, r.events[-10:])
+    assert r.al.T.z == pytest.approx(z_off, abs=1e-6)
+    assert any(e.startswith("takeoff") and "floor z anchored" in e for e in r.events)
+    takeoff = next(x for x in r.log if x.phase == "climb")
+    assert abs(r.m.takeoff_odom[2] + z_off) < 1e-6
+    st = r.m.status(takeoff.t)
+    assert st["aligner"]["z"] == pytest.approx(z_off, abs=1e-3) and st["aligner"]["z_anchored"]
+    z_true = [x.truth[2] for x in r.log if x.phase == "fly"]
+    assert max(z_true) <= c.wall_top - p.wall_margin_m + 0.05
+    assert abs(max(z_true) - p.cruise_z_m) < 0.1
+
+
+def test_window_crossing_outside_the_opening_is_not_counted():
+    """A window checkpoint (zmin/zmax) crossed above its top is logged and not counted; the
+    segment then runs into the failure ladder instead of completing."""
+    win = Checkpoint(1, "win", 7.0, line=((-1.5, 1.5), (1.5, 1.5)), zmin=0.3, zmax=1.2)
+    c = course([win, CP(2, "pad", circle=(0.0, 3.0, 0.5))])
+    p = MissionParams(return_leg=False, speed_mps=1.0, cruise_z_m=1.4, segment_timeout_s=3.0, replans=0)
+    r = fly(c, p)
+
+    assert any("outside its opening 0.30..1.20 m: not counted" in e for e in r.events), r.events
+    assert r.m.passed == []
+    assert r.m.result.startswith("aborted: win timed out"), r.m.result
+
+
+def test_ladder_landing_inside_the_tube_backs_out_first():
+    """Blocked inside the tube: the ladder's landing first reverses the carrot along the path at
+    tunnel speed until the aircraft is outside the tube footprint, then lands."""
+    tube = {"x": [-0.5, 0.5], "y": [1.0, 3.0], "z": [0.0, 1.8]}
+    c = course([CP(1, "zz", line=((-0.5, 3.0), (0.5, 3.0))), CP(2, "pad", circle=(0.0, 4.5, 0.5))], tube=tube)
+    p = MissionParams(return_leg=False, speed_mps=1.0, tunnel_speed_mps=0.3, segment_timeout_s=4.0, replans=0)
+
+    def wall(t, m, px4):
+        px4.truth[1] = min(px4.truth[1], 2.0)    # stuck halfway down the tube
+    r = fly(c, p, on_tick=wall)
+
+    assert any("backing out of the tube before landing" in e for e in r.events), r.events
+    assert r.m.result.startswith("aborted: zz timed out"), r.m.result
+    assert "out of the tube" in r.m.result
+    first_land = next(x for x in r.log if x.phase == "land")
+    assert first_land.truth[1] < tube["y"][0], first_land.truth
+    assert sum(1 for k in r.fol.calls if k[0] == "back_off") > 10
+    assert r.px4.truth[1] < tube["y"][0] and not r.px4.armed
+
+
+def test_descent_that_never_arrives_times_out_into_px4_land():
+    """PX4 will not go below 0.6 m over the pad (z drift put the 0.30 m target in the floor): after
+    vertical_timeout_s the mission hands the landing to PX4 anyway instead of pressing down."""
+    c = course([CP(1, "g1", line=((-1.5, 1.5), (1.5, 1.5))), CP(2, "pad", circle=(0.0, 3.0, 0.5))])
+    p = MissionParams(return_leg=False, speed_mps=1.0, vertical_timeout_s=3.0)
+
+    def floor(t, m, px4):
+        if m.phase == "descend":
+            px4.truth[2] = max(px4.truth[2], 0.6)
+    r = fly(c, p, on_tick=floor)
+
+    assert any("descent to 0.30 m timed out" in e for e in r.events), r.events
+    assert r.m.result == "complete", (r.m.result, r.events[-10:])
+    assert [q["name"] for q in r.m.passed] == ["g1", "pad"]
+
+
+def test_arm_hold_setpoint_tracks_px4_until_the_first_request():
+    """The position estimate creeps while the aircraft waits disarmed: the streamed hold setpoint
+    follows it until the Offboard request, so PX4 never takes over onto a stale ground setpoint."""
+    c = course([CP(1, "g1", line=((-1.5, 1.5), (1.5, 1.5))), CP(2, "pad", circle=(0.0, 3.0, 0.5))])
+
+    def creep(t, m, px4):
+        if m.phase == "arm" and m.t_cmd is None:
+            px4.truth[0] += 0.02
+    r = fly(c, MissionParams(return_leg=False, speed_mps=1.0), on_tick=creep)
+
+    arm = [x for x in r.log if x.phase == "arm" and x.out.setpoint is not None]
+    i_cmd = next(i for i, x in enumerate(arm) if x.out.commands)
+    assert i_cmd >= 10
+    assert abs(arm[i_cmd].out.setpoint[1] - arm[0].out.setpoint[1]) > 0.3      # NED e = odom x
+    assert all(arm[i].out.setpoint == arm[i_cmd].out.setpoint for i in range(i_cmd, len(arm)))
+    assert r.m.result == "complete", (r.m.result, r.events[-10:])
+
+
+def test_pad_miss_by_the_estimate_skips_the_return_leg():
+    """pad_miss_abort_m > 0: the estimate says the pad landing was 0.6 m off: the return leg over the
+    walls is not flown with a map pose that is not trusted."""
+    c = course([CP(1, "g1", line=((-1.5, 1.5), (1.5, 1.5))), CP(2, "pad", circle=(0.0, 3.0, 0.5))])
+    p = MissionParams(return_leg=True, speed_mps=1.0, pad_miss_abort_m=0.3)
+
+    def shift(t, m, px4):
+        if m.phase == "land" and m.leg == "main":
+            m.aligner.T = F.SE2(0.6, 0.0)
+    r = fly(c, p, on_tick=shift)
+
+    assert r.m.result.startswith("aborted: landed") and "return leg not flown" in r.m.result, r.m.result
+    assert "ground" not in [x.phase for x in r.log]
+    assert len(r.al.inits) == 1 and not r.px4.armed
+    assert [q["name"] for q in r.m.passed] == ["g1", "pad"]
+
+
+def test_empty_depth_frames_keep_the_stream_alive_but_silence_lands():
+    """A live camera that sees nothing at flight height (the net, open space) reports EMPTY point
+    arrays: 15+ s of those never land the aircraft. 15 s with no frame reported at all does."""
+    c = course([CP(1, "g1", line=((-1.5, 1.5), (1.5, 1.5))), CP(2, "pad", circle=(0.0, 5.0, 0.5))])
+    p = MissionParams(return_leg=False, speed_mps=0.3)          # ~17 s airborne, depth_lost_land_s 10 s
+
+    def empty(t, m, px4):
+        if px4.armed:
+            m.on_points(t, np.zeros((0, 2)), px4.truth[2])
+    r = fly(c, p, points=lambda t, m, px4: False, on_tick=empty)
+    airborne = [x.t for x in r.log if x.phase in ("climb", "fly", "descend")]
+    assert airborne[-1] - airborne[0] > 15.0
+    assert r.m.result == "complete", (r.m.result, r.events[-10:])
+    assert not any("no usable depth frame" in e for e in r.events)
+    assert r.m.counts["empty_frames"] > 100 and r.m.counts["point_frames"] == 0 and r.al.updates == []
+    st = r.m.status(r.log[-1].t)
+    assert st["depth_age_s"] is not None and st["walls_age_s"] is None
+
+    r = fly(c, p, points=lambda t, m, px4: False)
+    assert r.m.result.startswith("aborted: no usable depth frame for 10."), r.m.result
+    assert any(x.phase == "fly" for x in r.log) and not r.px4.armed
+
+
+def test_out_of_order_depth_frames_are_dropped():
+    c = course([CP(1, "g1", line=((-1.5, 1.5), (1.5, 1.5))), CP(2, "pad", circle=(0.0, 3.0, 0.5))])
+    m = Mission(c, FakePlanner(c), FakeFollower(), FakeAligner(), MissionParams())
+    pts = np.array([[1.0, 0.0], [1.0, 0.5]])
+    m.on_points(1.0, pts, 0.8, stamp=0.95)
+    m.on_points(1.1, pts, 0.8, stamp=0.90)                      # older capture: dropped
+    m.on_points(1.2, pts, 0.8, stamp=0.95)                      # duplicate: dropped
+    m.on_points(1.3, pts, 0.8)                                  # no stamp: taken
+    assert m.counts["depth_out_of_order"] == 2 and m.counts["point_frames"] == 2
+    assert m.depth_alive_t == 1.3 and m.walls_t == 1.3
+
+
+class ThinMarginPlanner(FakePlanner):
+    """The fake planner, but every path was found only at reduced inflation (0.25 of 0.33 m)."""
+
+    def inflate_m(self):
+        return 0.33
+
+    def through_gate(self, start_xy, name, z):
+        p = super().through_gate(start_xy, name, z)
+        p.inflate_m, p.notes = 0.25, "inflation reduced to 0.25 m (test)"
+        return p
+
+    def to_point(self, start_xy, goal_xy, z):
+        p = super().to_point(start_xy, goal_xy, z)
+        p.inflate_m, p.notes = 0.33, ""
+        return p
+
+
+def test_reduced_inflation_path_is_logged_and_flown_slower():
+    """A path the planner found only with less than its full inflation has a thin wall margin: the
+    mission logs the planner's notes and hands the follower speed_mps * thin_margin_speed_scale."""
+    c = course([CP(1, "g1", line=((-1.5, 1.5), (1.5, 1.5))), CP(2, "pad", circle=(0.0, 3.0, 0.5))])
+    p = MissionParams(return_leg=False, speed_mps=1.0, thin_margin_speed_scale=0.5)
+    r = fly(c, p, planner=ThinMarginPlanner(c))
+    assert r.m.result == "complete", (r.m.result, r.events[-10:])
+    assert any("planner notes for g1: inflation reduced" in e for e in r.events)
+    assert any("g1: inflation 0.25 m < 0.33 m, speed 0.50 m/s" in e for e in r.events)
+    assert not any("pad: inflation" in e for e in r.events)          # full inflation: full speed

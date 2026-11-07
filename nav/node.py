@@ -11,8 +11,15 @@ to the pure mission with its time; the mission's Output is published as native P
   out  /fmu/in/{offboard_control_mode, trajectory_setpoint, vehicle_command}
        status_topic (std_msgs/String JSON, 2 Hz), event log (nav.eventlog, JSON lines)
 
+Depth timing: a frame is stamped at capture and arrives 50-150 ms later (stereo + transport); the
+drone has moved meanwhile (0.5 m/s -> 2.5-7.5 cm, 60 deg/s yaw -> 3-9 deg = 10-31 cm sideways at
+2 m, more than the aligner's match gate). The PX4 pose is therefore not read "latest" but from a
+short history (nav.landmarks.PoseBuffer) at the image header stamp. All stamps are on the node
+clock: the camera driver stamps on it, and PX4 samples are stamped at receipt (PX4's own timestamps
+are on PX4's clock, see onboard/adapters/px4_odom.py).
+
 Topic names are parameters (lab: x86 + Jazzy, Jetson: ARM + Humble).
-Run:  python3 fly.py            (or python3 -m nav.node --ros-args -p use_sim_time:=true)
+Run:  python3 main.py            (or python3 -m nav.node --ros-args -p use_sim_time:=true)
 """
 from __future__ import annotations
 
@@ -20,13 +27,14 @@ import json
 import math
 import sys
 import time
+import traceback
 from pathlib import Path
 
 import numpy as np
 import rclpy
 from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from sensor_msgs.msg import CameraInfo, Image
 from std_msgs.msg import Bool, String
 
@@ -39,6 +47,11 @@ from . import course as COURSE
 from . import frames as F
 from . import landmarks as LM
 from .eventlog import EventLog
+
+# depth: best effort (matches a reliable or best-effort camera publisher) and ONE frame of history,
+# so a slow tick never works through a backlog of stale frames - the newest frame is the useful one
+DEPTH_QOS = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT, history=HistoryPolicy.KEEP_LAST, depth=1)
+LOG_AT = (1, 10, 100, 1000)
 
 
 class NavNode(Node):
@@ -82,6 +95,7 @@ class NavNode(Node):
         self.pub_status = self.create_publisher(String, status_topic, 10)
 
         self.v = RC.Vehicle()
+        self.poses = LM.PoseBuffer(self.lm_params.pose_buffer_s)
         self._yaw_align = (False, None)
         self.create_subscription(VehicleLocalPosition, "/fmu/out/vehicle_local_position_v1", self._on_lpos, PX4_QOS)
         self.create_subscription(VehicleAttitude, "/fmu/out/vehicle_attitude", self._on_att, PX4_QOS)
@@ -91,12 +105,16 @@ class NavNode(Node):
         self.create_subscription(Bool, self.health_topic, self._on_health, 10)
         self.create_subscription(DiagnosticStatus, self.vio_state_topic, self._on_vio_state, 10)
         self.create_subscription(CameraInfo, self.info_topic, self._on_info, qos_profile_sensor_data)
-        self.create_subscription(Image, self.depth_topic, self._on_depth, qos_profile_sensor_data)
+        self.create_subscription(Image, self.depth_topic, self._on_depth, DEPTH_QOS)
 
         self.K = None
-        self.extrinsic = None
-        self.rejects = {}
-        self.depth_ms = 0.0
+        self.extrinsic = None               # (frame_id, R_body_cam, t_body_cam)
+        self.rejects = {}                   # frames NOT used, by reason
+        self.frames = {"points": 0, "empty": 0, "pose_fallback": 0, "unstamped": 0}   # frames used, how
+        self.depth_ms = 0.0                 # EMA: wall_points CPU time per frame
+        self.depth_latency_ms = 0.0         # EMA: image stamp -> arrival on the node clock
+        self.pose_dt_ms = 0.0               # EMA: image stamp distance to the PX4 samples used
+        self.heading_skew_deg = 0.0         # EMA: |lpos.heading - yaw(q)| at the image stamp (expect ~0)
         self.done_at = None
         self.create_timer(0.05, self._tick)            # 20 Hz on the node clock
         self.create_timer(0.5, self._publish_status)
@@ -107,19 +125,32 @@ class NavNode(Node):
     def _now(self):
         return self.get_clock().now().nanoseconds * 1e-9
 
+    @staticmethod
+    def _px4_age(m):
+        """Seconds between a PX4 message's sample and its publication, on PX4's clock (a difference,
+        so clock-independent); clamped so a bad field cannot shift a sample far."""
+        age = (int(m.timestamp) - int(getattr(m, "timestamp_sample", m.timestamp))) * 1e-6
+        return min(max(age, 0.0), 0.05)
+
     def _on_est_flags(self, m):
         self._yaw_align = (bool(m.cs_yaw_align), self._now())
 
     def _on_lpos(self, m):
+        now = self._now()
         self.v.pos = (m.x, m.y, m.z)
         self.v.heading = m.heading
         ya, ya_t = self._yaw_align
-        heading_ok = bool(m.heading_good_for_control) or (ya and ya_t is not None and self._now() - ya_t <= 3.0)
+        heading_ok = bool(m.heading_good_for_control) or (ya and ya_t is not None and now - ya_t <= 3.0)
         self.v.pos_ok = bool(m.xy_valid and m.z_valid and heading_ok
                              and all(math.isfinite(c) for c in (m.x, m.y, m.z, m.heading)))
+        if self.v.pos_ok:                   # only poses PX4 itself trusts enter the depth history
+            self.poses.push_pos(now - self._px4_age(m), m.x, m.y, m.z, m.heading)
 
     def _on_att(self, m):
-        self.v.q = tuple(float(c) for c in m.q)
+        q = tuple(float(c) for c in m.q)
+        self.v.q = q
+        if all(math.isfinite(c) for c in q):
+            self.poses.push_att(self._now() - self._px4_age(m), q)
 
     def _on_status(self, m):
         self.v.armed = m.arming_state == 2
@@ -129,7 +160,7 @@ class NavNode(Node):
         self.v.landed = bool(m.landed)
 
     def _on_health(self, m):
-        self.mission.on_health(self._now(), m.data)
+        self.mission.on_health(self._now(), bool(m.data))
 
     def _on_vio_state(self, m):
         lost = 0.0
@@ -137,18 +168,24 @@ class NavNode(Node):
             if kv.key == "lost_s":
                 try:
                     lost = float(kv.value)
-                except ValueError:
+                except (TypeError, ValueError):
                     pass
-        self.mission.on_vio_state(self._now(), m.message, lost)
+        if not math.isfinite(lost):
+            lost = 0.0
+        self.mission.on_vio_state(self._now(), str(m.message), lost)
 
     def _on_info(self, m):
         if m.k[0] > 0 and m.k[4] > 0:
-            self.K = (m.k[0], m.k[4], m.k[2], m.k[5])
+            self.K = (float(m.k[0]), float(m.k[4]), float(m.k[2]), float(m.k[5]))
+
+    def _count(self, table, key, detail, level="warning"):
+        """Count an event by key; log it WITH its numbers the 1st, 10th, 100th and 1000th time."""
+        table[key] = table.get(key, 0) + 1
+        if table[key] in LOG_AT:
+            getattr(self.get_logger(), level)(f"depth {key} ({table[key]}x): {detail}")
 
     def _reject(self, key, detail):
-        self.rejects[key] = self.rejects.get(key, 0) + 1
-        if self.rejects[key] in (1, 10, 100, 1000):
-            self.get_logger().warning(f"depth frame not used ({self.rejects[key]}x): {detail}")
+        self._count(self.rejects, key, "frame not used: " + detail)
 
     def _calibration(self, frame_id):
         if self.extrinsic is not None and self.extrinsic[0] == frame_id:
@@ -156,34 +193,91 @@ class NavNode(Node):
         from rclpy.time import Time
         try:
             tf = self.tf_buffer.lookup_transform(self.base_frame, frame_id, Time())
-        except Exception as e:
+        except Exception as e:                      # not (yet) on the TF tree: tf2 raises several types
             self._reject("no_tf", f"no TF {self.base_frame} <- {frame_id} ({type(e).__name__})")
             return None
         r, t = tf.transform.rotation, tf.transform.translation
-        self.extrinsic = (frame_id, D.quat_to_mat(r.w, r.x, r.y, r.z), np.array([t.x, t.y, t.z]))
-        self.log.event(self._now(), "calibration", frame=frame_id, xyz=[t.x, t.y, t.z])
+        R = D.quat_to_mat(r.w, r.x, r.y, r.z)
+        # an OPTICAL frame has its z axis (R[:, 2] in body) along body-forward; a body-aligned TF
+        # (z up) would turn every point into silent garbage, so refuse it (refnav/node.py pattern)
+        fwd = R[:, 2]
+        ang = math.degrees(math.acos(max(-1.0, min(1.0, float(fwd[0]) / (np.linalg.norm(fwd) or 1.0)))))
+        if ang > self.lm_params.optical_axis_tol_deg:
+            self._reject("camera_not_forward", f"TF {self.base_frame} <- {frame_id}: optical axis {ang:.0f} deg off "
+                         f"body-forward (optical_axis_tol_deg {self.lm_params.optical_axis_tol_deg:g}); not an optical "
+                         f"frame or not a forward camera")
+            return None
+        self.extrinsic = (frame_id, R, np.array([t.x, t.y, t.z], float))
+        self.get_logger().info(f"calibration from TF: {self.base_frame} <- {frame_id} t=({t.x:.3f},{t.y:.3f},{t.z:.3f}) "
+                               f"optical axis {ang:.1f} deg off forward")
+        self.log.event(self._now(), "calibration", frame=frame_id, xyz=[t.x, t.y, t.z], axis_off_deg=round(ang, 2))
         return self.extrinsic
 
     def _on_depth(self, m):
+        try:
+            self._depth(m)
+        except Exception as e:              # one bad frame must never take the node (setpoint stream) down
+            self._reject("exception", f"{type(e).__name__}: {e}")
+            if self.rejects["exception"] <= 3:
+                self.get_logger().error(traceback.format_exc())
+
+    def _depth(self, m):
+        p = self.lm_params
         if self.K is None:
             return self._reject("no_camera_info", f"no camera_info on {self.info_topic}")
         cal = self._calibration(m.header.frame_id)
         if cal is None:
             return None
-        if self.v.q is None or self.v.pos is None or self.v.heading is None:
-            return self._reject("no_pose", "no PX4 attitude/position yet")
+        if not self.poses.t_pos or not self.poses.t_att:
+            return self._reject("no_pose", "no valid PX4 position/attitude yet (pos_ok needs xy_valid, z_valid, heading)")
         try:
-            d = D.decode_depth(m.encoding, m.height, m.width, m.step, bytes(m.data))
+            d = LM.depth_view(m.encoding, m.height, m.width, m.step, m.data, bool(m.is_bigendian))
         except ValueError as e:
             return self._reject("undecodable", str(e))
-        x, y, z = F.ned_to_enu(*self.v.pos)
-        pose = (x, y, z, F.heading_to_yaw(self.v.heading))
+        now = self._now()
+        stamp = m.header.stamp.sec + m.header.stamp.nanosec * 1e-9
+        if stamp <= 0.0:                    # an unstamped image: arrival time is the best there is
+            self._count(self.frames, "unstamped", "depth image has no header stamp; using arrival time")
+            stamp = now
+        latency = now - stamp
+        if latency > p.max_latency_s:       # a backlog or a clock mismatch: the pose history cannot cover it
+            return self._reject("stale", f"image {latency:.2f} s old on arrival (max_latency_s {p.max_latency_s:g}); "
+                                         f"camera and node on different clocks (use_sim_time)?" if latency > 2.0
+                                else f"image {latency:.2f} s old on arrival (max_latency_s {p.max_latency_s:g})")
+        if latency < -p.pose_max_dt_s:
+            return self._reject("future", f"image stamped {-latency:.2f} s in the future: clocks disagree")
+        pose, q, dt_pos, dt_att = self.poses.at(stamp)
+        dt = max(dt_pos, dt_att)
+        if dt > p.pose_max_dt_s:
+            self._count(self.frames, "pose_fallback", f"image stamp lies {dt * 1e3:.0f} ms outside the PX4 pose history "
+                        f"(latency {latency * 1e3:.0f} ms, pose_max_dt_s {p.pose_max_dt_s:g}); using the nearest sample")
+        self.pose_dt_ms = 0.9 * self.pose_dt_ms + 0.1 * dt * 1e3
+        self.depth_latency_ms = 0.9 * self.depth_latency_ms + 0.1 * latency * 1e3
+        rate = self.poses.yaw_rate(stamp)
+        if rate is not None and abs(math.degrees(rate)) > p.max_yaw_rate_dps:
+            # even an interpolated pose is only as good as the stamps; a 10 ms error at 60 deg/s is
+            # 0.6 deg = 2 cm at 2 m, and the aligner's gate is 25 cm: skip the update while turning
+            return self._reject("turning", f"yaw rate {math.degrees(rate):.0f} deg/s > max_yaw_rate_dps {p.max_yaw_rate_dps:g}")
+        px, py, pz, heading = pose
+        x, y, z = F.ned_to_enu(px, py, pz)
+        # the odom yaw comes from the SAME quaternion level_rotation strips its yaw from, so the two
+        # cannot disagree; lpos.heading is PX4's yaw of that quaternion, its skew is only a metric
+        heading_q = LM.heading_from_quat(q)
+        self.heading_skew_deg = 0.9 * self.heading_skew_deg + 0.1 * abs(math.degrees(F.wrap(heading_q - heading)))
+        pose_odom = (x, y, z, F.heading_to_yaw(heading_q))
         t0 = time.perf_counter()
-        pts = LM.wall_points(d, self.K, cal[1], cal[2], self.v.q, pose, self.lm_params)
+        # floor cut reference: the takeoff spot's odom z once the mission has one (PX4's local z
+        # origin is where its EKF started, not necessarily the floor), else odom z = 0
+        takeoff = getattr(self.mission, "takeoff_odom", None)
+        floor_z = float(takeoff[2]) if takeoff is not None else 0.0
+        pts = LM.wall_points(d, self.K, cal[1], cal[2], q, pose_odom, p, floor_z=floor_z)
         self.depth_ms = 0.9 * self.depth_ms + 0.1 * (time.perf_counter() - t0) * 1e3
         if pts is None:
-            return self._reject("unusable", "too few valid depth pixels")
-        self.mission.on_points(self._now(), pts, z)
+            return self._reject("unusable", f"too few valid depth pixels (min_valid_frac {p.min_valid_frac:g})")
+        # a usable frame with nothing at flight height (net, far wall) is NOT a reject: it is counted
+        # apart and still handed over as a (0,2) array, so the mission can treat it as "depth alive"
+        self.frames["empty" if len(pts) == 0 else "points"] += 1
+        self.mission.on_points(now, pts, z)
         return None
 
     # ------------------------------------------------------------------ outputs
@@ -201,7 +295,7 @@ class NavNode(Node):
     def _tick(self):
         now = self._now()
         if now <= 0.0:
-            return
+            return                                   # sim time before the first /clock
         out = self.mission.step(now, self.v)
         for e in out.events:
             self.get_logger().info(e)
@@ -239,7 +333,11 @@ class NavNode(Node):
         now = self._now()
         st = self.mission.status(now)
         st["rejects"] = dict(self.rejects)
+        st["frames"] = dict(self.frames)
         st["depth_ms"] = round(self.depth_ms, 1)
+        st["depth_latency_ms"] = round(self.depth_latency_ms, 1)
+        st["pose_dt_ms"] = round(self.pose_dt_ms, 1)
+        st["heading_skew_deg"] = round(self.heading_skew_deg, 2)
         txt = json.dumps(st, default=float)
         self.pub_status.publish(String(data=txt))
         self.log.event(now, "status", status=json.loads(txt))
@@ -248,18 +346,24 @@ class NavNode(Node):
 
 
 def main(argv=None):
+    from rclpy.executors import ExternalShutdownException
     rclpy.init(args=list(argv) if argv is not None else sys.argv)
-    node = NavNode()
+    node = None
     code = 1
     try:
+        node = NavNode()                            # inside the try: a config error still shuts rclpy down
         rclpy.spin(node)
     except SystemExit as e:
         code = int(e.code or 0)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         code = 130
     finally:
-        node.log.close()
-        node.destroy_node()
+        if node is not None:
+            node.log.close()
+            try:
+                node.destroy_node()
+            except Exception:
+                pass
         if rclpy.ok():
             rclpy.shutdown()
     sys.exit(code)

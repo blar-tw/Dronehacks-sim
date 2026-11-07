@@ -47,8 +47,8 @@ class EvBridge(Node):
         self.health=self._health()
         self.loss_args={name:declare(self,name,default) for name,default in (
             ('min_features',30.),('pos_sigma_rate',.25),('pos_sigma_max',.5),
-            ('vel_sigma_rate',.25),('vel_sigma_max',.5),('withhold_max_s',2.))}
-        self.loss=VioLoss(**self.loss_args);self.state='WITHHELD';self.sigma=0.
+            ('vel_sigma_rate',.25),('vel_sigma_max',.5),('withhold_max_s',2.),('features_timeout_s',1.))}
+        self.loss=VioLoss(**self.loss_args);self.state='WITHHELD';self.sigma=0.;self.features_warned=False
         self.floors={name:[float(v) for v in declare(self,name,[0.,0.,0.])]
                      for name in ('position_floor','orientation_floor','velocity_floor')}
         if any(len(v)!=3 or not all(math.isfinite(x) and x>=0 for x in v) for v in self.floors.values()):
@@ -58,8 +58,8 @@ class EvBridge(Node):
         self.guard=PublisherGuard(self,self.out_topic) if self.out_topic.startswith('/fmu/in/') else None
         self.state_pub=self.create_publisher(DiagnosticStatus,str(declare(self,'state_topic','/estimator/vio_state')),10)
         self.sub=self.create_subscription(Odometry,self.in_topic,self._on_odom,SENSOR_QOS)
-        self.create_subscription(Int32MultiArray,str(declare(self,'features_topic','/visual_slam/vis/observations_count')),
-            self._on_features,SENSOR_QOS)
+        self.features_topic=str(declare(self,'features_topic','/visual_slam/vis/observations_count'))
+        self.create_subscription(Int32MultiArray,self.features_topic,self._on_features,SENSOR_QOS)
         self.reset_counter=initial_reset_counter();self.last_pos=None;self.frame_id=None
         self.last_now=None;self.last_good=None;self.ok=False;self.reason='no samples'
         self.counts={'input':0,'published':0,'invalid':0,'withheld':0,'unowned':0,'clock_resets':0,'degraded':0,'forced':0}
@@ -85,7 +85,11 @@ class EvBridge(Node):
     def _publish_health(self):
         healthy=self._healthy_now()
         self.ok_pub.publish(Bool(data=healthy))
-        # OK / DEGRADED (sending, sigma inflated) / WITHHELD (PX4 is not getting vision)
+        self._publish_state(healthy)
+
+    def _publish_state(self,healthy):
+        # OK / DEGRADED (sending, sigma inflated) / WITHHELD (PX4 is not getting vision). Also
+        # called on every transition from _on_odom so the mission does not wait for the 5 Hz tick.
         state=self.state if healthy else 'WITHHELD'
         level={'OK':DiagnosticStatus.OK,'DEGRADED':DiagnosticStatus.WARN}.get(state,DiagnosticStatus.ERROR)
         lost=self.loss.lost_s(now_us(self)*1e-6)
@@ -94,7 +98,8 @@ class EvBridge(Node):
             KeyValue(key='reason',value=self.reason)]))
 
     def _on_features(self,msg):
-        self.loss.features(now_us(self)*1e-6,msg.data[0])
+        if not len(msg.data):return          # an empty array must not kill the bridge (IndexError)
+        self.loss.features(now_us(self)*1e-6,int(msg.data[0]));self.features_warned=False
 
     def _on_odom(self,msg):
         self.counts['input']+=1
@@ -112,11 +117,22 @@ class EvBridge(Node):
         sane,reason=self.health.update(capture*1e-6,pos)
         if self.guard is not None and not self.guard.may_publish():
             self.ok=False;self.reason='proving sole vision ownership';self.counts['unowned']+=1;return
-        d=self.loss.decide(now*1e-6,sane)
+        t=now*1e-6;prev=self.state
+        # fresh = this sample itself jumped / was too fast; only settling samples may be forced out
+        d=self.loss.decide(t,sane,self.health.fresh)
         self.ok,self.reason=d.send,reason
-        if not d.send:self.state='WITHHELD';self.counts['withheld']+=1;return
+        if not d.send:
+            self.state,self.sigma='WITHHELD',0.;self.counts['withheld']+=1
+            if prev!=self.state:self._publish_state(False)
+            return
         if d.forced:self.reason=f'sent after {self.loss.withhold_max_s:.1f} s withheld: {reason}';self.counts['forced']+=1
-        elif d.state=='DEGRADED':self.reason=f'weak visual tracking for {self.loss.lost_s(now*1e-6):.1f} s'
+        elif d.state=='DEGRADED':self.reason=f'weak visual tracking for {self.loss.lost_s(t):.1f} s'
+        elif not self.loss.known(t):
+            # feature counts absent (other cuVSLAM build, or not yet heard): unknown is NOT weak
+            self.reason=f'{reason}; no feature counts, weak-tracking inflation off'
+            if not self.features_warned and self.counts['published']>30:   # once per outage, after the startup race
+                self.get_logger().warning(f'no feature counts on {self.features_topic} for >{self.loss.features_timeout_s:.1f} s: sending VIO at its own covariance')
+                self.features_warned=True
         if d.state=='DEGRADED':self.counts['degraded']+=1
         self.state,self.sigma=d.state,math.sqrt(d.pos_var)
         changed=(self.frame_id is not None and self.frame_id!=msg.header.frame_id)
@@ -131,6 +147,7 @@ class EvBridge(Node):
             reset_counter=self.reset_counter,quality=self.quality,**self.floors)
         self.pub.publish(fill_vehicle_odometry(VehicleOdometry(),value))
         self.last_good=now;self.counts['published']+=1
+        if prev!=self.state:self._publish_state(True)
 
     def _log(self):
         self.get_logger().info(f'counts={self.counts} captures={self.gate.counts} healthy={self._healthy_now()} '
