@@ -52,6 +52,14 @@ def test_path_crosses_the_checkpoints_in_order_and_stays_clear():
     assert C.clearance(dense[5:], 0.55, 1.1).min() > 0.30             # past the launch mark
 
 
+def test_return_leg_is_over_the_walls_and_under_the_net_to_the_launch_mark():
+    p = planner.PlanParams()
+    r = planner.plan_return(C, p)
+    assert np.allclose([r[0].x, r[0].y], C.pad_center) and np.allclose([r[-1].x, r[-1].y], C.launch)
+    top_net = C.doc["net"]["z"][1]
+    assert all(C.wall_top + 0.4 < w.z < top_net - 0.4 for w in r)
+
+
 def _scan(xy, yaw, scorer):
     """Wall samples the camera at xy/yaw would see (the map itself, no noise)."""
     vis = scorer.visible(xy)

@@ -29,6 +29,7 @@ class PlanParams:
     simplify_m: float = 0.04
     corner_stop_deg: float = 60.0
     height_m: float = 0.6             # flight height above the takeoff point, every segment
+    return_height_m: float = 2.3      # return leg: over the 1.73 m walls, under the 3.05 m net
 
 
 @dataclass
@@ -153,3 +154,11 @@ def plan(course, p: PlanParams = PlanParams()):
         if turn > p.corner_stop_deg:
             wps[i].kind = "stop"
     return wps
+
+
+def plan_return(course, p: PlanParams = PlanParams()):
+    """Return leg (rule 7.10): from the pad, climb to return_height_m, fly straight over the barrier to
+    the launch mark, land there. Above the walls nothing is in the way, so no A*."""
+    pad, launch = course.pad_center, course.launch
+    return [Waypoint(pad[0], pad[1], p.return_height_m, "stop", "return_climb"),
+            Waypoint(launch[0], launch[1], p.return_height_m, "stop", "launch")]
