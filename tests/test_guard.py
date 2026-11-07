@@ -77,3 +77,10 @@ def test_window_goes_through_without_gate_b():
     f.step(0.0, 0.05, pos, f.look_yaw, 0.09)
     f.step(5.1, 0.05, pos, f.look_yaw, 0.09)
     assert f.mode == "go" and f.i == i + 1
+
+
+def test_climb_lag_does_not_hover():
+    g = fresh()
+    ground = (0.0, 0.0, 0.0)
+    assert not g.check(1.0, ground, SP, behind=False)
+    assert not g.check(3.1, ground, SP, behind=False)

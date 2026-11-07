@@ -6,5 +6,7 @@
     depth_info_topic: /camera/depth/camera_info
     health_topic: /estimator/healthy
     base_frame: base_link
+    # lab practice start is 20 cm in from the official launch mark (LAB_WEB.md); 0.0 when starting on the mark
+    launch_offset_m: 0.20
     control_topic: /refnav/control
     status_topic: /refnav/status

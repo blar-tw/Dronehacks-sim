@@ -2,8 +2,9 @@
 for resume_s.
 
 Hover on: VIO WITHHELD (ev_bridge state), no camera frames for frames_timeout_s, or the vehicle
-behind its setpoint by more than behind_xy_m / behind_z_m for behind_s. VIO DEGRADED only slows the
-follower. Map sigma (stop and look) is the follower's job.
+behind its setpoint by more than behind_xy_m / behind_z_m for behind_s (not while climbing off the
+ground: the vehicle lags the climb ramp while it spools up). VIO DEGRADED only slows the follower.
+Map sigma (stop and look) is the follower's job.
 """
 import math
 from dataclasses import dataclass
@@ -43,13 +44,13 @@ class Guard:
     def slow(self):
         return self.vio == "DEGRADED"
 
-    def _problem(self, now, pos, sp):
+    def _problem(self, now, pos, sp, behind):
         p = self.p
         if self.vio == "WITHHELD":
             return "VIO withheld"
         if now - self.t_frame > p.frames_timeout_s:
             return f"no camera frames for {now - self.t_frame:.0f} s"
-        if math.hypot(pos[0] - sp[0], pos[1] - sp[1]) > p.behind_xy_m or abs(pos[2] - sp[2]) > p.behind_z_m:
+        if behind and (math.hypot(pos[0] - sp[0], pos[1] - sp[1]) > p.behind_xy_m or abs(pos[2] - sp[2]) > p.behind_z_m):
             self.behind_since = self.behind_since if self.behind_since is not None else now
             if now - self.behind_since > p.behind_s:
                 return "behind the setpoint"
@@ -57,9 +58,10 @@ class Guard:
             self.behind_since = None
         return ""
 
-    def check(self, now, pos, sp):
-        """pos: vehicle odom (x, y, z); sp: the setpoint being flown. -> True while hovering."""
-        why = self._problem(now, pos, sp)
+    def check(self, now, pos, sp, behind=True):
+        """pos: vehicle odom (x, y, z); sp: the setpoint being flown; behind: check the setpoint lag.
+        -> True while hovering."""
+        why = self._problem(now, pos, sp, behind)
         if why:
             self.holding, self.why, self.fine_since = True, why, None
         elif self.holding:

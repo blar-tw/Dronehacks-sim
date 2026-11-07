@@ -22,6 +22,7 @@ NAV_OFFBOARD, NAV_AUTO_LAND = 14, 18
 @dataclass
 class MissionParams:
     launch_yaw_enu: float = math.pi / 2     # the launch mark faces up the first corridor (course +y)
+    launch_offset_m: float = 0.0            # start this far ahead of the launch mark along launch_yaw_enu
     health_quiet_s: float = 2.0
     climb_rate_mps: float = 0.5
     climb_tol_m: float = 0.10
@@ -139,7 +140,7 @@ class Mission:
 
         if airborne:
             held = self.hold_sp is not None
-            if self.guard.check(now, v.pos, self.hold_sp or self.sp):
+            if self.guard.check(now, v.pos, self.hold_sp or self.sp, behind=self.phase != "climb"):
                 if not held:
                     self.hold_sp = [*v.pos, v.yaw]
                     ev = f"hover: {self.guard.why}"
@@ -154,7 +155,9 @@ class Mission:
                 self.home = (*v.pos, v.yaw)
                 self.sp = list(self.home)
                 if self.leg == "out":
-                    self.loc.start(self.course.launch, p.launch_yaw_enu, v.pos[:2], v.yaw)
+                    start = np.asarray(self.course.launch) + p.launch_offset_m * np.array(
+                        [math.cos(p.launch_yaw_enu), math.sin(p.launch_yaw_enu)])
+                    self.loc.start(start, p.launch_yaw_enu, v.pos[:2], v.yaw)
                 ev = self._set("arm", now)
         elif self.phase == "arm":
             if v.armed and v.nav_state == NAV_OFFBOARD:

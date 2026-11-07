@@ -19,7 +19,7 @@ from . import course as COURSE
 from . import planner
 from .frames import enu_to_ned, heading_to_yaw, ned_to_enu, yaw_to_heading
 from .localizer import Localizer, wall_points
-from .mission import Mission, Vehicle
+from .mission import Mission, MissionParams, Vehicle
 from .yaw import ViewScorer
 
 PX4_QOS = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT, durability=DurabilityPolicy.TRANSIENT_LOCAL,
@@ -37,7 +37,8 @@ class NavNode(Node):
         wps = planner.plan(course, pp)
         z_map = sum(pp.band_z) / 2                     # wall faces at the body's height in the map
         self.loc = Localizer(course, z_map)
-        self.mission = Mission(course, wps, self.loc, ViewScorer(course, z_map), ret=planner.plan_return(course, pp))
+        self.mission = Mission(course, wps, self.loc, ViewScorer(course, z_map), ret=planner.plan_return(course, pp),
+                               p=MissionParams(launch_offset_m=float(prm("launch_offset_m", 0.0))))
         self.get_logger().info(f"planned {len(wps)} waypoints: " + " ".join(
             f"({w.x:.2f},{w.y:.2f}{',' + w.label if w.label else ''}{'*' if w.kind == 'stop' else ''})" for w in wps))
 
