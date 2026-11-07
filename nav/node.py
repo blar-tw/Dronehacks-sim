@@ -9,6 +9,7 @@ import rclpy
 from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
+from diagnostic_msgs.msg import DiagnosticStatus
 from sensor_msgs.msg import CameraInfo, Image
 from std_msgs.msg import Bool, String
 
@@ -36,13 +37,14 @@ class NavNode(Node):
         wps = planner.plan(course, pp)
         z_map = sum(pp.band_z) / 2                     # wall faces at the body's height in the map
         self.loc = Localizer(course, z_map)
-        self.mission = Mission(course, wps, self.loc, ViewScorer(course, z_map))
+        self.mission = Mission(course, wps, self.loc, ViewScorer(course, z_map), ret=planner.plan_return(course, pp))
         self.get_logger().info(f"planned {len(wps)} waypoints: " + " ".join(
             f"({w.x:.2f},{w.y:.2f}{',' + w.label if w.label else ''}{'*' if w.kind == 'stop' else ''})" for w in wps))
 
         self.depth_topic = prm("depth_topic", "/camera/depth/image_raw")
         info_topic = prm("depth_info_topic", "/camera/depth/camera_info")
         health_topic = prm("health_topic", "/estimator/healthy")
+        vio_state_topic = prm("vio_state_topic", "/estimator/vio_state")
         self.base_frame = prm("base_frame", "base_link")
         self.sys_clock = Clock(clock_type=ClockType.SYSTEM_TIME)
 
@@ -60,6 +62,7 @@ class NavNode(Node):
         self.create_subscription(VehicleAttitude, "/fmu/out/vehicle_attitude", self._on_att, PX4_QOS)
         self.create_subscription(VehicleStatus, "/fmu/out/vehicle_status_v1", self._on_status, PX4_QOS)
         self.create_subscription(Bool, health_topic, lambda m: self.mission.on_health(self._now(), m.data), 10)
+        self.create_subscription(DiagnosticStatus, vio_state_topic, lambda m: self.mission.guard.on_vio(m.message), 10)
         self.create_subscription(CameraInfo, info_topic, self._on_info, qos_profile_sensor_data)
         self.create_subscription(Image, self.depth_topic, self._on_depth, qos_profile_sensor_data)
 
@@ -69,6 +72,7 @@ class NavNode(Node):
         self.cal = None
         self.yaw_rate = 0.0
         self._prev_yaw = None
+        self._follow_seen = None
         self.poses = deque(maxlen=100)                 # (t, x, y, z, yaw): the pose at each depth frame's stamp
         self.create_timer(0.05, self._tick)
         self.create_timer(0.5, self._publish_status)
@@ -99,6 +103,7 @@ class NavNode(Node):
         self.K = (m.k[0], m.k[4], m.k[2], m.k[5])
 
     def _on_depth(self, m):
+        self.mission.guard.on_frame(self._now())
         if self.mission.phase not in ("look", "follow") or self.K is None or self.q is None \
                 or self.yaw_rate > MAX_YAW_RATE:
             return
@@ -141,6 +146,13 @@ class NavNode(Node):
         if out.event:
             self.get_logger().info(out.event)
             self._publish_status()
+        f = self.mission.follower
+        if self.mission.phase == "follow" and (f.mode, f.i) != self._follow_seen:
+            self._follow_seen = (f.mode, f.i)
+            st = self.mission.status()
+            self.get_logger().info(f"follow {f.mode} seg {f.i}/{st['segments']} -> {st['target'] or 'path'} "
+                                   f"pos {[round(c, 2) for c in self.v.pos]} sigma {st['sigma_xy']} "
+                                   f"T {st['T_map_odom']} fits {st['fits']} last: {st['last_fit']}")
         if out.stream and out.setpoint is not None:
             o = self._OCM()
             o.timestamp = self._sys_us()
@@ -164,7 +176,7 @@ class NavNode(Node):
         if out.phase == "done":
             self.get_logger().info(f"mission done: {self.mission.result}")
             self._publish_status()
-            raise SystemExit(0 if self.mission.result == "complete" else 1)
+            raise SystemExit(0 if self.mission.result.startswith("complete") else 1)
 
     def _publish_status(self):
         self.pub_status.publish(String(data=json.dumps(self.mission.status())))

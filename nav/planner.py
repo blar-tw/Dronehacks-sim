@@ -6,8 +6,8 @@ from. Between goals, A* runs on a 5 cm grid of the obstacle clearance at the fli
 closer than `inflate_m` to an obstacle are blocked and cells closer than `prefer_m` cost more, so
 the path stays centred in corridors. The cell path is simplified (Douglas-Peucker) to waypoints.
 
-Waypoint kinds: "stop" = stop, look and turn before going on (sharp corners, tunnel entry, window
-approach); "pass" = fly through.
+Waypoint kinds: "stop" = stop, look if needed and turn before going on (sharp corners, tunnel exit,
+pad); "window" = the window approach (localize facing the window wall first); "pass" = fly through.
 """
 import heapq
 import math
@@ -128,10 +128,10 @@ def goals(course, p: PlanParams):
     north, south = np.array([(x0 + x1) / 2, y1 + p.gate_m]), np.array([(x0 + x1) / 2, y0 - p.gate_m])
     if np.linalg.norm(out[-1][0] - north) > np.linalg.norm(out[-1][0] - south):
         north, south = south, north
-    out += [(north, "stop", "tube_before"), (south, "pass", "tube_after")]
+    out += [(north, "pass", "tube_before"), (south, "stop", "tube_after")]   # re-align at the exit
     w = course.window
     b, a = _through(w.a, w.b, out[-1][0], p.window_m)
-    out += [(b, "stop", "window_before"), (a, "pass", "window_after")]
+    out += [(b, "window", "window_before"), (a, "pass", "window_after")]
     out.append((course.pad_center, "stop", "pad"))
     return out
 
@@ -151,7 +151,7 @@ def plan(course, p: PlanParams = PlanParams()):
         u = np.array([wps[i].x - wps[i - 1].x, wps[i].y - wps[i - 1].y])
         v = np.array([wps[i + 1].x - wps[i].x, wps[i + 1].y - wps[i].y])
         turn = math.degrees(abs(math.atan2(u[0] * v[1] - u[1] * v[0], u @ v)))
-        if turn > p.corner_stop_deg:
+        if turn > p.corner_stop_deg and wps[i].kind == "pass":
             wps[i].kind = "stop"
     return wps
 
