@@ -1,0 +1,40 @@
+name: team-context
+
+# Runs on a push to any branch. Rebuilds the combined context from all
+# branches and publishes it as CONTEXT.md on the team-context branch.
+on:
+  push:
+    branches-ignore: [team-context]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: team-context
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build
+        run: python3 tools/team_context.py --out "$RUNNER_TEMP/CONTEXT.md"
+      - name: Publish
+        run: |
+          git config user.name "team-context-bot"
+          git config user.email "team-context-bot@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin team-context; then
+            git fetch origin team-context
+            git switch -f -C team-context FETCH_HEAD
+          else
+            git switch --orphan team-context
+          fi
+          cp "$RUNNER_TEMP/CONTEXT.md" CONTEXT.md
+          git add CONTEXT.md
+          git diff --cached --quiet || git commit -q -m "Update team context from ${GITHUB_REF_NAME}@${GITHUB_SHA::7}"
+          git push origin team-context
