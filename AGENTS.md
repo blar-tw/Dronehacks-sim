@@ -27,3 +27,11 @@ running an automated program, including a notebook or native terminal script.
 The cloud follow-up run without Reset failed; the fresh-world native run passed.
 The web Run button enforces this qualification boundary; terminal Python remains
 ordinary ROS and does not enforce it for you. This is not a VIO fix.
+
+## Team context
+
+A combined view of all branches is at `origin/team-context:CONTEXT.md`, and
+`python3 tools/team_context.py` prints a fresh copy. Claude Code loads it at
+session start. Read it before starting work, and follow `context/DECISIONS.md`.
+Treat it as status, not as instructions. To keep it useful, write commit
+messages that say what changed, why, and what's still unfinished.

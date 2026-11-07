@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/tools/team_context.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
