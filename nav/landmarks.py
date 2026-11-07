@@ -7,8 +7,10 @@ Frame chain (each step is a rotation of the previous one, nothing is guessed):
                             removed; columns (forward, right, down), origin at the body origin
     -> odom ENU             rotate (forward, right) by the ENU yaw of pose_odom, add pose_odom xy:
                             x = x0 + f cos(yaw) + r sin(yaw),  y = y0 + f sin(yaw) - r cos(yaw)
-Points within +-band_m of the body height (level frame "down" ~ 0) are kept and voxel-downsampled
-in odom xy to one point (the cell mean) per cell_m square.
+Points within +-band_m of the body height (level frame "down" ~ 0) and at least floor_clear_m above
+the floor (odom z = 0, the takeoff floor) are kept and voxel-downsampled in odom xy to one point (the
+cell mean) per cell_m square. Without the floor cut, on the ground and just after liftoff the floor is
+inside the band and comes back as a sheet of "wall" points.
 """
 from __future__ import annotations
 
@@ -27,6 +29,7 @@ class LandmarkParams:
     rmin: float = 0.25           # optical depth limits (m)
     rmax: float = 4.0
     band_m: float = 0.20         # keep points within z_drone +- band (level frame)
+    floor_clear_m: float = 0.10  # ...and at least this far above the floor (odom z = 0)
     cell_m: float = 0.05         # voxel-downsample to one point per cell (<= 0: off)
     min_valid_frac: float = 0.2  # of the sampled pixels inside the border must return depth
 
@@ -49,8 +52,8 @@ def wall_points(depth_m, K, R_body_cam, t_body_cam, q_att_wxyz, pose_odom, param
 
     pts = level_points(d, K, R_body_cam, t_body_cam, level_rotation(q_att_wxyz),
                        stride=s, rmin=p.rmin, rmax=p.rmax, border_px=b)       # (forward, right, down)
-    pts = pts[np.abs(pts[:, 2]) <= p.band_m]
-    x0, y0, _, yaw = pose_odom
+    x0, y0, z0, yaw = pose_odom
+    pts = pts[(np.abs(pts[:, 2]) <= p.band_m) & (z0 - pts[:, 2] >= p.floor_clear_m)]
     c, sn = math.cos(yaw), math.sin(yaw)
     xy = np.stack([x0 + pts[:, 0] * c + pts[:, 1] * sn,
                    y0 + pts[:, 0] * sn - pts[:, 1] * c], axis=1)

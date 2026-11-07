@@ -108,6 +108,7 @@ class Follower:
 class LandmarkParams:
     stride: int = 4; border_px: int = 16; rmin: float = 0.25; rmax: float = 4.0
     band_m: float = 0.20     # keep points within z_drone +- band (level frame)
+    floor_clear_m: float = 0.10  # ...and at least this far above the floor (odom z = 0)
     cell_m: float = 0.05     # voxel-downsample to one point per cell
     min_valid_frac: float = 0.2
 

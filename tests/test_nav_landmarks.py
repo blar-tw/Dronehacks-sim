@@ -82,3 +82,19 @@ def test_wall_ahead_lands_on_its_odom_line(yaw_deg, roll_deg, pitch_deg):
     assert lat.min() < span[0] + 0.1 and lat.max() > span[1] - 0.1   # the whole span, not mirrored
     cells = np.floor(pts / 0.05).astype(int)
     assert len(np.unique(cells, axis=0)) == len(pts)                # one point per 5 cm cell
+
+
+@pytest.mark.parametrize("z", [0.0, 0.05, 0.15])
+def test_floor_is_not_a_wall_near_the_ground(z):
+    """On the ground and just after liftoff the floor is inside the +-band_m height band; it must not
+    come back as wall points (local GZ 2026-11-06: floor points matched m1_maze_divider and the aligner
+    moved the map 13 cm on a drone sitting still on the launch mark)."""
+    pos = np.array([1.3, -0.7, z])
+    yaw = math.radians(90)
+    d, q, _ = render_wall(pos, yaw, 0.0, 0.0, 1.5, (-0.5, 0.5))
+
+    pts = LM.wall_points(d, K, R_BODY_CAM, T_BODY_CAM, q, (pos[0], pos[1], pos[2], yaw), LM.LandmarkParams())
+
+    assert pts is not None and len(pts) > 5
+    fwd = np.array([math.cos(yaw), math.sin(yaw)])
+    assert np.abs((pts - pos[:2]) @ fwd - 1.5).max() < 0.05          # only the wall, no floor
