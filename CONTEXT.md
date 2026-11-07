@@ -18,7 +18,7 @@ agent sees the change. Numbers match the Approaches tab on DroneHacks HQ.
 | 1 | Philosophy | Map-first, using Blar's architecture |
 | 2 | Position accuracy | VIO plus wall alignment |
 | 3 | Dark tunnel | Coast through |
-| 4 | Route finding | A* on a 3D grid |
+| 4 | Route finding | A* on a 2D grid at cruise height |
 | 5 | Path following | Stop-and-go |
 | 6 | Safety layer | None yet |
 | 7 | Sensors | No extra sensors |
@@ -28,7 +28,7 @@ agent sees the change. Numbers match the Approaches tab on DroneHacks HQ.
 
     OAK-D + IMU -> cuVSLAM -> ev_bridge -> PX4 EKF <- downward range
     OAK-D depth -> detector -> aligner -> map-to-VIO transform
-    course_map.yaml -> planner -> mission state machine -> PX4
+    course_map.yaml -> 2D planner -> mission state machine -> PX4
 
 ## Needs a team answer
 
@@ -38,13 +38,21 @@ agent sees the change. Numbers match the Approaches tab on DroneHacks HQ.
   `localization-mvp` says corrections never go into PX4. This file follows that.
 - Decision 5 differs from the 20 Hz lookahead follower in `ARCHITECTURE.md`.
 - Decision 6 differs from the local avoidance row in `ARCHITECTURE.md`.
-- Still open: OAK-D angle, ToF direction, Gate B or window, return flight, and
-  who owns which piece.
+- Cruise height isn't set. The 2D grid is built at that height, and the starter's
+  1.2 m is the top of the window. `ARCHITECTURE.md` uses about 0.8 m.
+- Still open: OAK-D angle, Gate B or window, return flight, and who owns which
+  piece. ToF direction is closed, because the only ToF sensor points down.
 
 ## Branches
 
 ### main
 
+- `fa34d42` Justin Yu, Fri Nov 06 19:48: Merge pull request #2 from blar-tw/decisions-2d-grid
+  Record the 2D grid decision
+- `0d73545` Justin Yu, Fri Nov 06 19:48: Record the 2D grid decision
+  The team chose A* on a 2D grid at cruise height over a 3D grid. Adds cruise
+  height as an open question, since the grid depends on it, and closes ToF
+  direction, because no extra sensors means the only ToF sensor points down.
 - `afb102e` Justin Yu, Fri Nov 06 19:20: Merge pull request #1 from blar-tw/context-layer
   Add a combined team context layer
 - `7779159` Justin Yu, Fri Nov 06 17:11: Add a combined team context layer
@@ -58,10 +66,10 @@ agent sees the change. Numbers match the Approaches tab on DroneHacks HQ.
   Project files from /var/lib/flyx-lab/workspace plus read-only
   inspection output in lab_info/ (lab_inspect.sh).
 
-### context-layer (0 ahead of main, 1 behind)
+### context-layer (0 ahead of main, 3 behind)
 
 
-### localization-mvp (2 ahead of main, 2 behind)
+### localization-mvp (2 ahead of main, 4 behind)
 
 - `ddbd236` blar, Fri Nov 06 16:48: Add the DroneHacks course files
   Official v3 course (OBJ/MTL, GLB, STEP) and course_map.yaml, the course
@@ -77,7 +85,7 @@ agent sees the change. Numbers match the Approaches tab on DroneHacks HQ.
 
 Files changed: `ARCHITECTURE.md`, `course/course-v3.glb`, `course/course_map.yaml`, `course/course_top.png`, `course/dronehacks-course-v3.step`, `course/obj/README.txt`, `course/obj/dronehacks-course-v3.mtl`, `course/obj/dronehacks-course-v3.obj`, `onboard/config/vision_bridge.yaml`, `onboard/vio/ev_bridge.py`, `onboard/vio/vio_health.py`, `tests/test_vio_loss.py`
 
-### hq-site (1 ahead of main, 2 behind)
+### hq-site (1 ahead of main, 4 behind)
 
 - `f4074f4` Justin Yu, Fri Nov 06 16:43: Add DroneHacks HQ team site
 
