@@ -6,7 +6,7 @@
     imu_frame: oak_imu
     base_frame: base_link
     odom_frame: odom
-    imu: true
+    imu: false   # A/B test 2026-11-07: Inertial mode diverged in the maze (non-finite covariance, 16 m jump); try camera-only
     imu_frequency: 500.0
     gyro_noise_density: 0.00244
     gyro_random_walk: 0.00005
