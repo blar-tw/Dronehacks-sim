@@ -6,7 +6,7 @@ Work in the cloud lab shows up here only after it's pushed.
 
 ## Decisions
 
-_Latest version, from `main`._
+_Latest version, from `docs/presentation`._
 
 # Team decisions
 
@@ -44,6 +44,35 @@ agent sees the change. Numbers match the Approaches tab on DroneHacks HQ.
   piece. ToF direction is closed, because the only ToF sensor points down.
 
 ## Branches
+
+### localizer-step-cap (3 ahead of main, 6 behind)
+
+- `e3b225c` Daisy Schall, Sun Nov 08 01:29: nav.localizer: cap each map fit at 0.30 m / 8 deg; follow PX4 resets
+  - localizer: reject a fit that would move the vehicle's map position more
+  than max_step_xy_m (0.30) or turn the map more than max_step_yaw_deg (8),
+  whatever sigma is. The 4-sigma gate alone lets 0.40 m through at takeoff
+  (sigma 0.10) and 1.0 m after 5 m without a fit. Rejections are counted in
+  `capped` and shown in /nav/status.
+  - node/mission/frames: when PX4's xy or heading reset counter changes, move
+- `3f42112` blar, Sat Nov 07 19:55: nav: new course map v4 on top of noimu-opt
+  - course/course_map_v4.yaml: v3 edited by hand from the organisers' plan:
+  maze dividers M1, M2, M3 removed; diagonal walls d1, d2, d3 added
+  (hand-placed, uncertain_m). flight.yaml uses v4; the lab still runs v3
+  (-p course_map:=course_map.yaml, plans exactly as noimu-opt)
+  - course: uncertain walls are thicker for planning and left out of
+  localization faces; relative map paths resolve in course/
+- `23b3d00` blar, Sat Nov 07 18:32: nav: smooth map corrections, no tunnel/window stops, controlled descent
+  - follower: fix a one-tick setpoint snap back to the previous segment's start
+  at every pass waypoint (jerk at each maze corner)
+  - mission: setpoints use Tc, which slides toward the localizer's T_map_odom at
+  most 5 cm/s and 3 deg/s at the vehicle, so a map fix never jumps the setpoint
+  - planner/follower: tunnel exit is a pass point; speed falls gradually with
+  sigma instead of halving; window approach at 0.15 m/s, straight through when
+
+Files changed: `course/course_map_v4.yaml`, `course/course_top_v4.png`, `flight.yaml`, `nav/course.py`, `nav/follower.py`, `nav/frames.py`, `nav/localizer.py`, `nav/mission.py`, `nav/node.py`, `nav/planner.py`, `tests/test_course_v4.py`, `tests/test_nav.py`
+
+### docs/presentation (0 ahead of main, 0 behind)
+
 
 ### main
 
@@ -156,13 +185,13 @@ Files changed: `hq/course3d.png`, `hq/drone.png`, `hq/index.html`, `hq/map.png`
 
 ## Files changed on more than one branch
 
-- `course/course_map_v4.yaml`: new-course-opt, new-course-opt-API
-- `course/course_top_v4.png`: new-course-opt, new-course-opt-API
-- `flight.yaml`: new-course-opt, new-course-opt-API
-- `nav/course.py`: new-course-opt, new-course-opt-API, nav-review
-- `nav/follower.py`: new-course-opt, new-course-opt-API, noimu-opt, nav-review
-- `nav/localizer.py`: new-course-opt, new-course-opt-API
-- `nav/mission.py`: new-course-opt, new-course-opt-API, noimu-opt, nav-review
-- `nav/node.py`: new-course-opt, new-course-opt-API, noimu-opt, nav-review
-- `nav/planner.py`: new-course-opt, new-course-opt-API, noimu-opt, nav-review
-- `tests/test_course_v4.py`: new-course-opt, new-course-opt-API
+- `course/course_map_v4.yaml`: localizer-step-cap, new-course-opt, new-course-opt-API
+- `course/course_top_v4.png`: localizer-step-cap, new-course-opt, new-course-opt-API
+- `flight.yaml`: localizer-step-cap, new-course-opt, new-course-opt-API
+- `nav/course.py`: localizer-step-cap, new-course-opt, new-course-opt-API, nav-review
+- `nav/follower.py`: localizer-step-cap, new-course-opt, new-course-opt-API, noimu-opt, nav-review
+- `nav/localizer.py`: localizer-step-cap, new-course-opt, new-course-opt-API
+- `nav/mission.py`: localizer-step-cap, new-course-opt, new-course-opt-API, noimu-opt, nav-review
+- `nav/node.py`: localizer-step-cap, new-course-opt, new-course-opt-API, noimu-opt, nav-review
+- `nav/planner.py`: localizer-step-cap, new-course-opt, new-course-opt-API, noimu-opt, nav-review
+- `tests/test_course_v4.py`: localizer-step-cap, new-course-opt, new-course-opt-API
