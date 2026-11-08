@@ -6,7 +6,7 @@ from. Between goals, A* runs on a 5 cm grid of the obstacle clearance at the fli
 closer than `inflate_m` to an obstacle are blocked and cells closer than `prefer_m` cost more, so
 the path stays centred in corridors. The cell path is simplified (Douglas-Peucker) to waypoints.
 
-Waypoint kinds: "stop" = stop, look if needed and turn before going on (sharp corners, tunnel exit,
+pad); "window" = the window approach (slow; stops to localize only if not localized yet); "pass" = fly through.
 pad); "window" = the window approach (localize facing the window wall first); "pass" = fly through.
 """
 import heapq
@@ -128,7 +128,7 @@ def goals(course, p: PlanParams):
     north, south = np.array([(x0 + x1) / 2, y1 + p.gate_m]), np.array([(x0 + x1) / 2, y0 - p.gate_m])
     if np.linalg.norm(out[-1][0] - north) > np.linalg.norm(out[-1][0] - south):
         north, south = south, north
-    out += [(north, "pass", "tube_before"), (south, "stop", "tube_after")]   # re-align at the exit
+    out += [(north, "pass", "tube_before"), (south, "pass", "tube_after")]   # re-align on the move after the exit
     w = course.window
     b, a = _through(w.a, w.b, out[-1][0], p.window_m)
     out += [(b, "window", "window_before"), (a, "pass", "window_after")]

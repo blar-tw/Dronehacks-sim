@@ -1,8 +1,14 @@
-"""Mission state machine: wait -> arm -> climb -> look -> follow -> land, then the return leg
-(arm -> climb -> look -> follow -> land again) if it fits in the time left -> done.
+"""Mission state machine: wait -> arm -> climb -> look -> follow -> descend -> land, then the return
+leg (arm -> climb -> look -> follow -> descend -> land again) if it fits in the time left -> done.
 
-Map corrections only move targets: every setpoint is a map target turned into odom with the
-localizer's current T_map_odom. PX4 sees only VIO.
+Map corrections only move targets: every setpoint is a map target turned into odom. PX4 sees only
+VIO. The follower decides with the localizer's T_map_odom (the best estimate); setpoints use Tc, a
+copy that slides toward it at most blend_mps / blend_dps at the vehicle, so a map fix never makes
+the setpoint jump.
+
+Descend: offboard, fast down to slow_h above the ground, then slow; at touch_h PX4 Land takes over
+for the last few cm (it only has to detect the touchdown). Height above the ground is the down
+rangefinder minus its reading on the ground at arm time, or the odom height without a rangefinder.
 
 The guard is the last layer: while it holds, the airborne phases stop advancing and the setpoint
 is the pose where the hold began.
@@ -13,7 +19,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .follower import Follower, FollowParams
-from .frames import wrap
+from .frames import SE2, rot, wrap
 from .guard import Guard
 
 NAV_OFFBOARD, NAV_AUTO_LAND = 14, 18
@@ -26,15 +32,24 @@ class MissionParams:
     health_quiet_s: float = 2.0
     climb_rate_mps: float = 0.5
     climb_tol_m: float = 0.10
-    yaw_rate_dps: float = 60.0
+    yaw_rate_dps: float = 30.0              # camera-only VIO: slow turns (lab 2026-11-08: VIO lost in the maze at 60)
     cmd_resend_s: float = 1.0
     stream_lead_s: float = 0.5
     takeoff_scan_deg: float = 0.0           # turn in place after the climb (lab 2026-11-07: 360 at 30 deg/s -> VIO lost, PX4 failsafe)
     scan_rate_dps: float = 30.0
     time_limit_s: float = 180.0             # rule: 3 min from the first takeoff
     rearm_s: float = 5.0                    # return estimate: disarmed on the pad -> climbing
-    land_rate_mps: float = 0.5              # return estimate: PX4 land descent
     return_margin_s: float = 10.0
+    blend_mps: float = 0.05                 # map corrections reach the setpoint at most this fast
+    blend_dps: float = 3.0
+    blend_ok_m: float = 0.03                # the window waits until the correction is in
+    descend_fast_mps: float = 0.4
+    descend_slow_mps: float = 0.12
+    slow_h_m: float = 0.30
+    touch_h_m: float = 0.05
+    descend_lag_m: float = 0.25             # the z setpoint stays at most this far below the vehicle
+    descend_max_s: float = 20.0
+    land_s: float = 3.0                     # return estimate: PX4 Land from touch_h to disarmed
 
 
 @dataclass
@@ -44,6 +59,7 @@ class Vehicle:
     pos_ok: bool = False
     armed: bool = None
     nav_state: int = None
+    range_m: float = None    # down rangefinder, None when missing or stale
 
 
 @dataclass
@@ -72,6 +88,9 @@ class Mission:
         self.offboard_seen = self.auto_land_seen = False
         self.scan_left = 0.0
         self.result = None
+        self.Tc = SE2()                      # T_map_odom the setpoints use (slides toward loc.T)
+        self.blend_err = (0.0, 0.0)          # (m at the vehicle, rad) still to slide in
+        self.ground_rng = None               # rangefinder reading on the ground at arm time
 
     def on_health(self, now, ok):
         self.healthy_since = (self.healthy_since or now) if ok else None
@@ -93,6 +112,33 @@ class Mission:
         step = math.radians(self.p.yaw_rate_dps) * dt
         self.sp[3] = wrap(self.sp[3] + max(-step, min(step, wrap(target - self.sp[3]))))
 
+    def _blend(self, dt, odom_xy):
+        """Slide Tc toward loc.T, limited at the vehicle: its map position moves at most blend_mps,
+        the yaw at most blend_dps."""
+        q = np.asarray(odom_xy, float)
+        a, b = self.Tc.apply(q), self.loc.T.apply(q)
+        d, dyaw = b - a, wrap(self.loc.T.yaw - self.Tc.yaw)
+        dist = float(np.linalg.norm(d))
+        f = 1.0
+        if dist > 1e-9:
+            f = min(f, self.p.blend_mps * dt / dist)
+        if abs(dyaw) > 1e-9:
+            f = min(f, math.radians(self.p.blend_dps) * dt / abs(dyaw))
+        yaw = self.Tc.yaw + f * dyaw
+        t = a + f * d - rot(yaw) @ q
+        self.Tc = SE2(t[0], t[1], yaw)
+        self.blend_err = ((1.0 - f) * dist, (1.0 - f) * dyaw)
+
+    def height(self, v):
+        """-> (height above the ground, source)."""
+        if v.range_m is not None and self.ground_rng is not None:
+            return v.range_m - self.ground_rng, "range"
+        return v.pos[2] - self.floor_z(), "odom"
+
+    def _descend_s(self, h):
+        p = self.p
+        return max(h - p.slow_h_m, 0.0) / p.descend_fast_mps + min(h, p.slow_h_m) / p.descend_slow_mps + p.land_s
+
     def map_pose(self, v):
         xy = self.loc.T.apply(np.array(v.pos[:2]))
         return xy, wrap(v.yaw + self.loc.T.yaw)
@@ -102,7 +148,7 @@ class Mission:
         p, fp = self.p, self.follower.p
         a, b = self.ret[0], self.ret[-1]
         d = math.hypot(b.x - a.x, b.y - a.y)
-        return p.rearm_s + a.z / p.climb_rate_mps + d / fp.speed_mps + a.z / p.land_rate_mps + p.return_margin_s
+        return p.rearm_s + a.z / p.climb_rate_mps + d / fp.speed_mps + self._descend_s(a.z) + p.return_margin_s
 
     def _return_or_done(self, now):
         if self.ret is None:
@@ -131,12 +177,13 @@ class Mission:
         cmds = []
         if self.phase == "done":
             return Out("done")
-        airborne = self.phase in ("climb", "look", "follow")
+        airborne = self.phase in ("climb", "look", "follow", "descend")
         if airborne and self.offboard_seen and v.nav_state != NAV_OFFBOARD:
             self.result = f"yielded: PX4 left Offboard (nav_state {v.nav_state})"
             return Out("done", event=self._set("done", now, self.result))
         if airborne or self.phase == "land":
             self.loc.predict(v.pos[:2])
+            self._blend(dt, v.pos[:2])
 
         if airborne:
             held = self.hold_sp is not None
@@ -158,7 +205,10 @@ class Mission:
                     start = np.asarray(self.course.launch) + p.launch_offset_m * np.array(
                         [math.cos(p.launch_yaw_enu), math.sin(p.launch_yaw_enu)])
                     self.loc.start(start, p.launch_yaw_enu, v.pos[:2], v.yaw)
-                ev = self._set("arm", now)
+                    self.Tc = SE2(*self.loc.T.vec())
+                self.ground_rng = v.range_m
+                ev = self._set("arm", now, "no rangefinder, descend on odom height" if v.range_m is None
+                               else f"rangefinder on the ground {v.range_m:.3f} m")
         elif self.phase == "arm":
             if v.armed and v.nav_state == NAV_OFFBOARD:
                 self.offboard_seen = True
@@ -184,12 +234,22 @@ class Mission:
             # above the walls (return leg) the map has nothing to see: fly on VIO, ignore map sigma
             sigma = 0.0 if self.leg == "return" else self.loc.sigma_xy()
             self.follower.slow = self.guard.slow
+            self.follower.blend_ok = self.blend_err[0] <= p.blend_ok_m
             carrot, z, tyaw = self.follower.step(now, dt, xy, yaw, sigma)
-            c = self.loc.T.inverse_apply(carrot)
+            c = self.Tc.inverse_apply(carrot)
             self.sp[0], self.sp[1], self.sp[2] = c[0], c[1], self.home[2] + z
-            self._yaw_toward(tyaw - self.loc.T.yaw, dt)
+            self._yaw_toward(tyaw - self.Tc.yaw, dt)
             if self.follower.done:
-                ev = self._set("land", now, "at the pad" if self.leg == "out" else "at the launch mark")
+                h, src = self.height(v)
+                ev = self._set("descend", now, ("at the pad" if self.leg == "out" else "at the launch mark")
+                               + f", {h:.2f} m up ({src})")
+        elif self.phase == "descend":
+            h, src = self.height(v)
+            rate = p.descend_fast_mps if h > p.slow_h_m else p.descend_slow_mps
+            self.sp[2] = max(self.sp[2] - rate * dt, v.pos[2] - p.descend_lag_m)
+            if h <= p.touch_h_m or now - self.t_phase > p.descend_max_s:
+                why = f"{h:.3f} m up ({src})" if h <= p.touch_h_m else f"descend timeout, {h:.2f} m up ({src})"
+                ev = self._set("land", now, why)
         elif self.phase == "land":
             if v.nav_state == NAV_AUTO_LAND:
                 self.auto_land_seen = True
@@ -202,7 +262,7 @@ class Mission:
                     self.result = "complete with return"
                     ev = self._set("done", now, "landed on the launch mark")
 
-        stream = self.phase in ("arm", "climb", "look", "follow") or (self.phase == "land" and not self.auto_land_seen)
+        stream = self.phase in ("arm", "climb", "look", "follow", "descend") or (self.phase == "land" and not self.auto_land_seen)
         return Out(self.phase, tuple(self.sp) if self.sp else None, stream, tuple(cmds), ev)
 
     def status(self):
@@ -212,4 +272,5 @@ class Mission:
                 "target": self.wps[min(f.i + 1, len(self.wps) - 1)].label,
                 "hover": self.guard.why if self.hold_sp is not None else "", "vio": self.guard.vio,
                 "sigma_xy": round(self.loc.sigma_xy(), 3), "T_map_odom": [round(c, 3) for c in self.loc.T.vec()],
+                "Tc": [round(c, 3) for c in self.Tc.vec()], "blend_left_m": round(self.blend_err[0], 3),
                 "fits": self.loc.accepted, "last_fit": self.loc.last}

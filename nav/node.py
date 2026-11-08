@@ -26,6 +26,8 @@ PX4_QOS = QoSProfile(reliability=ReliabilityPolicy.BEST_EFFORT, durability=Durab
                      history=HistoryPolicy.KEEP_LAST, depth=1)
 CMD_SET_MODE, CMD_ARM, CMD_LAND = 176, 400, 21
 MAX_YAW_RATE = math.radians(15.0)       # depth frames are skipped while turning faster
+RANGE_STALE_S = 0.5
+ROTATION_DOWNWARD_FACING = 25
 
 
 class NavNode(Node):
@@ -52,8 +54,8 @@ class NavNode(Node):
         from tf2_ros import Buffer, TransformListener
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
-        from px4_msgs.msg import (OffboardControlMode, TrajectorySetpoint, VehicleAttitude, VehicleCommand,
-                                  VehicleLocalPosition, VehicleStatus)
+        from px4_msgs.msg import (DistanceSensor, OffboardControlMode, TrajectorySetpoint, VehicleAttitude,
+                                  VehicleCommand, VehicleLocalPosition, VehicleStatus)
         self._OCM, self._TSP, self._CMD = OffboardControlMode, TrajectorySetpoint, VehicleCommand
         self.pub_ocm = self.create_publisher(OffboardControlMode, "/fmu/in/offboard_control_mode", PX4_QOS)
         self.pub_sp = self.create_publisher(TrajectorySetpoint, "/fmu/in/trajectory_setpoint", PX4_QOS)
@@ -62,6 +64,7 @@ class NavNode(Node):
         self.create_subscription(VehicleLocalPosition, "/fmu/out/vehicle_local_position_v1", self._on_lpos, PX4_QOS)
         self.create_subscription(VehicleAttitude, "/fmu/out/vehicle_attitude", self._on_att, PX4_QOS)
         self.create_subscription(VehicleStatus, "/fmu/out/vehicle_status_v1", self._on_status, PX4_QOS)
+        self.create_subscription(DistanceSensor, "/fmu/out/distance_sensor", self._on_range, PX4_QOS)
         self.create_subscription(Bool, health_topic, lambda m: self.mission.on_health(self._now(), m.data), 10)
         self.create_subscription(DiagnosticStatus, vio_state_topic, lambda m: self.mission.guard.on_vio(m.message), 10)
         self.create_subscription(CameraInfo, info_topic, self._on_info, qos_profile_sensor_data)
@@ -74,6 +77,7 @@ class NavNode(Node):
         self.yaw_rate = 0.0
         self._prev_yaw = None
         self._follow_seen = None
+        self.rng = None                                # (receive time, metres) of the down rangefinder
         self.poses = deque(maxlen=100)                 # (t, x, y, z, yaw): the pose at each depth frame's stamp
         self.create_timer(0.05, self._tick)
         self.create_timer(0.5, self._publish_status)
@@ -99,6 +103,11 @@ class NavNode(Node):
     def _on_status(self, m):
         self.v.armed = m.arming_state == 2
         self.v.nav_state = int(m.nav_state)
+
+    def _on_range(self, m):
+        if m.orientation == ROTATION_DOWNWARD_FACING and math.isfinite(m.current_distance) \
+                and m.min_distance <= m.current_distance <= m.max_distance:
+            self.rng = (self._now(), float(m.current_distance))
 
     def _on_info(self, m):
         self.K = (m.k[0], m.k[4], m.k[2], m.k[5])
@@ -143,6 +152,7 @@ class NavNode(Node):
         now = self._now()
         if now <= 0.0 or self.v.pos is None:
             return
+        self.v.range_m = self.rng[1] if self.rng and now - self.rng[0] < RANGE_STALE_S else None
         out = self.mission.step(now, self.v)
         if out.event:
             self.get_logger().info(out.event)
@@ -150,10 +160,11 @@ class NavNode(Node):
         f = self.mission.follower
         if self.mission.phase == "follow" and (f.mode, f.i) != self._follow_seen:
             self._follow_seen = (f.mode, f.i)
+            # T = map estimate, Tc = what the setpoints use (slides toward T)
             st = self.mission.status()
             self.get_logger().info(f"follow {f.mode} seg {f.i}/{st['segments']} -> {st['target'] or 'path'} "
                                    f"pos {[round(c, 2) for c in self.v.pos]} sigma {st['sigma_xy']} "
-                                   f"T {st['T_map_odom']} fits {st['fits']} last: {st['last_fit']}")
+                                   f"T {st['T_map_odom']} Tc {st['Tc']} fits {st['fits']} last: {st['last_fit']}")
         if out.stream and out.setpoint is not None:
             o = self._OCM()
             o.timestamp = self._sys_us()
