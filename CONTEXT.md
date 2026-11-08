@@ -45,6 +45,11 @@ agent sees the change. Numbers match the Approaches tab on DroneHacks HQ.
 
 ## Branches
 
+### docs/presentation (1 ahead of main, 0 behind)
+
+
+Files changed: `presentation/presentation.pdf`
+
 ### localizer-step-cap (3 ahead of main, 6 behind)
 
 - `e3b225c` Daisy Schall, Sun Nov 08 01:29: nav.localizer: cap each map fit at 0.30 m / 8 deg; follow PX4 resets
@@ -70,9 +75,6 @@ agent sees the change. Numbers match the Approaches tab on DroneHacks HQ.
   sigma instead of halving; window approach at 0.15 m/s, straight through when
 
 Files changed: `course/course_map_v4.yaml`, `course/course_top_v4.png`, `flight.yaml`, `nav/course.py`, `nav/follower.py`, `nav/frames.py`, `nav/localizer.py`, `nav/mission.py`, `nav/node.py`, `nav/planner.py`, `tests/test_course_v4.py`, `tests/test_nav.py`
-
-### docs/presentation (0 ahead of main, 0 behind)
-
 
 ### main
 
