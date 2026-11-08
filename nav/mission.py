@@ -19,7 +19,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .follower import Follower, FollowParams
-from .frames import SE2, rot, wrap
+from .frames import SE2, after_odom_reset, odom_after_reset, rot, wrap
 from .guard import Guard
 
 NAV_OFFBOARD, NAV_AUTO_LAND = 14, 18
@@ -97,6 +97,17 @@ class Mission:
 
     def floor_z(self):
         return self.home[2]
+
+    def on_odom_reset(self, old_xy, new_xy, d_yaw):
+        """PX4 reset its local frame (see frames.odom_after_reset). The map estimate, the setpoint
+        transform and the odom setpoints follow it, so nothing moves in the map and no map correction
+        is needed (a jump bigger than the localizer's step cap could never be corrected)."""
+        self.loc.odom_reset(old_xy, new_xy, d_yaw)
+        self.Tc = after_odom_reset(self.Tc, old_xy, new_xy, d_yaw)
+        for sp in (self.sp, self.hold_sp):
+            if sp is not None:
+                sp[0], sp[1] = (float(c) for c in odom_after_reset(sp[:2], old_xy, new_xy, d_yaw))
+                sp[3] = wrap(sp[3] + d_yaw)
 
     def _set(self, phase, now, why=""):
         self.phase, self.t_phase = phase, now
@@ -273,4 +284,4 @@ class Mission:
                 "hover": self.guard.why if self.hold_sp is not None else "", "vio": self.guard.vio,
                 "sigma_xy": round(self.loc.sigma_xy(), 3), "T_map_odom": [round(c, 3) for c in self.loc.T.vec()],
                 "Tc": [round(c, 3) for c in self.Tc.vec()], "blend_left_m": round(self.blend_err[0], 3),
-                "fits": self.loc.accepted, "last_fit": self.loc.last}
+                "fits": self.loc.accepted, "capped": self.loc.capped, "last_fit": self.loc.last}

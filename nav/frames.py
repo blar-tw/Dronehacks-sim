@@ -55,3 +55,18 @@ class SE2:
         """map -> odom."""
         p = np.asarray(xy, float) - np.array([self.x, self.y])
         return p @ rot(self.yaw)
+
+
+def odom_after_reset(xy, old_xy, new_xy, d_yaw):
+    """Odom xy of a fixed point after PX4 reset its local frame: the vehicle's odom xy jumped from
+    old_xy to new_xy and its odom yaw by d_yaw (the frame turned by d_yaw about the vehicle)."""
+    p = np.asarray(xy, float) - np.asarray(old_xy, float)
+    return np.asarray(new_xy, float) + p @ rot(d_yaw).T
+
+
+def after_odom_reset(T, old_xy, new_xy, d_yaw):
+    """T_map_odom after a PX4 local-frame reset (see odom_after_reset). Every fixed point, the vehicle
+    included, keeps its map position: a reset is bookkeeping, not a map correction."""
+    yaw = wrap(T.yaw - d_yaw)
+    t = T.apply(old_xy) - rot(yaw) @ np.asarray(new_xy, float)
+    return SE2(t[0], t[1], yaw)
