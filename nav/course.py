@@ -2,6 +2,10 @@
 
 Obstacles are vertical prisms: oriented boxes (walls and their parts), boulders (cylinders) and the
 tube's two side walls (the tube is open at its north and south ends). The net bounds the field.
+
+A wall with `uncertain_m` was placed by hand, not measured: clearance() (planning) treats it as that
+much thicker, and faces_at() (localization, view scoring) leaves it out, so a wall that is a bit off
+never pulls the map. A relative path in load() is looked up in the course/ folder.
 """
 import math
 from dataclasses import dataclass
@@ -24,6 +28,7 @@ class Box:
     yaw: float
     z0: float
     z1: float
+    uncertain: float = 0.0   # metres: hand-placed, keep this much further away, do not localize on it
 
     def corners(self):
         c, s = math.cos(self.yaw), math.sin(self.yaw)
@@ -64,7 +69,8 @@ class Course:
             for i, p in enumerate(w.get("parts", [w])):
                 (cx, cy, cz), (sx, sy, sz) = p["center"], p["size"]
                 self.boxes.append(Box(f"{w['name']}#{i}" if "parts" in w else w["name"],
-                                      cx, cy, sx, sy, p["yaw"], cz - sz / 2, cz + sz / 2))
+                                      cx, cy, sx, sy, p["yaw"], cz - sz / 2, cz + sz / 2,
+                                      float(w.get("uncertain_m", 0.0))))
         t = doc["tube"]
         (x0, x1), (y0, y1), (z0, z1) = t["x"], t["y"], t["z"]
         self.tube = (x0, x1, y0, y1)
@@ -88,7 +94,7 @@ class Course:
         (nx0, nx1), (ny0, ny1) = self.net
         d = np.minimum.reduce([P[:, 0] - nx0, nx1 - P[:, 0], P[:, 1] - ny0, ny1 - P[:, 1]])
         for b in self.boxes_at(z0, z1):
-            d = np.minimum(d, b.distance(P))
+            d = np.minimum(d, np.maximum(b.distance(P) - b.uncertain, 0.0))
         for c, r, h in self.boulders:
             if h > z0:
                 d = np.minimum(d, np.maximum(np.linalg.norm(P - c, axis=1) - r, 0.0))
@@ -98,6 +104,8 @@ class Course:
         """Wall faces at height z as (A, B, N): segment ends (F,2) and outward normals (F,2)."""
         A, B = [], []
         for b in self.boxes_at(z, z):
+            if b.uncertain > 0.0:
+                continue
             c = b.corners()
             for k in range(4):
                 A.append(c[k])
@@ -109,5 +117,8 @@ class Course:
 
 
 def load(path=DEFAULT_MAP):
+    path = Path(path)
+    if not path.is_absolute() and not path.exists():
+        path = DEFAULT_MAP.parent / path
     with open(path) as f:
         return Course(yaml.safe_load(f))

@@ -8,5 +8,7 @@
     base_frame: base_link
     # lab practice start is 20 cm in from the official launch mark (LAB_WEB.md); 0.0 when starting on the mark
     launch_offset_m: 0.20
+    # new course (v4, 2026-11-07). The lab simulator still runs v3: python3 main.py -p course_map:=course_map.yaml
+    course_map: course_map_v4.yaml
     control_topic: /refnav/control
     status_topic: /refnav/status

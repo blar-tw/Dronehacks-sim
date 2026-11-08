@@ -6,12 +6,20 @@ from. Between goals, A* runs on a 5 cm grid of the obstacle clearance at the fli
 closer than `inflate_m` to an obstacle are blocked and cells closer than `prefer_m` cost more, so
 the path stays centred in corridors. The cell path is simplified (Douglas-Peucker) to waypoints.
 
-pad); "window" = the window approach (slow; stops to localize only if not localized yet); "pass" = fly through.
-pad); "window" = the window approach (localize facing the window wall first); "pass" = fly through.
+Per-course options come from the map's `planner:` section (v3 has none, so it plans as before):
+- shortcut: drop cell-path points where the straight line between their neighbours stays at least
+  as far from obstacles as the path it replaces (or prefer_m): no wiggles in open areas.
+- gate_a_free: cross the Gate A line where the path is shortest (gate_end_m from its ends), not at
+  its centre (v4: M3 is gone, nothing pins the crossing).
+Any line's before/after point closer than inflate_m to an obstacle is pulled back toward the line
+until it is clear (v4: the d3 wall is ~0.5 m past CP1, so cp1_after sits almost on the line).
+
+Waypoint kinds: "stop" = stop, look if needed and turn before going on (sharp corners, CP1, pad);
+"window" = the window approach (slow; stops to localize only if not localized yet); "pass" = fly through.
 """
 import heapq
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, replace
 
 import numpy as np
 
@@ -30,6 +38,9 @@ class PlanParams:
     corner_stop_deg: float = 60.0
     height_m: float = 0.6             # flight height above the takeoff point, every segment
     return_height_m: float = 2.3      # return leg: over the 1.73 m walls, under the 3.05 m net
+    shortcut: bool = False
+    gate_a_free: bool = False
+    gate_end_m: float = 0.30          # gate_a_free: keep the crossing this far from the line's ends
 
 
 @dataclass
@@ -115,19 +126,70 @@ def _through(line_a, line_b, prev, d):
     return c - d * n, c + d * n
 
 
+def _cross(line_a, line_b, prev, nxt, d, end_m):
+    """Before/after points through the point of segment a-b (end_m from its ends) that makes
+    prev -> point -> nxt shortest, ordered from prev."""
+    t = line_b - line_a
+    L = float(np.linalg.norm(t))
+    ss = np.linspace(end_m, L - end_m, 200)
+    pts = line_a + np.outer(ss / L, t)
+    c = pts[np.argmin(np.linalg.norm(pts - prev, axis=1) + np.linalg.norm(pts - nxt, axis=1))]
+    n = np.array([t[1], -t[0]]) / L
+    if np.dot(c - prev, n) < 0:
+        n = -n
+    return c - d * n, c + d * n
+
+
+def _shortcut(course, p, P):
+    """String-pull an (N,2) polyline: from each kept point jump to the farthest later point whose
+    straight segment keeps clearance >= min(prefer_m, the clearance of the path it replaces)."""
+    clear = lambda Q: course.clearance(Q, *p.band_z)  # noqa: E731
+    cP = clear(P)
+    out, i = [P[0]], 0
+    while i < len(P) - 1:
+        j = len(P) - 1
+        while j > i + 1:
+            seg = P[i] + np.linspace(0, 1, max(2, int(np.linalg.norm(P[j] - P[i]) / 0.02)))[:, None] * (P[j] - P[i])
+            if clear(seg).min() >= min(p.prefer_m, cP[i:j + 1].min()) - 1e-9:
+                break
+            j -= 1
+        out.append(P[j])
+        i = j
+    return np.array(out)
+
+
+def _fit(course, p, before, after):
+    """Pull before/after (on one normal through a line) toward their midpoint until each has
+    clearance >= inflate_m; error if even the line itself is blocked."""
+    mid = (before + after) / 2
+    res = []
+    for q in (before, after):
+        for k in np.linspace(1.0, 0.0, 41):
+            pt = mid + k * (q - mid)
+            if course.clearance([pt], *p.band_z)[0] >= p.inflate_m + 0.01:
+                res.append(pt)
+                break
+        else:
+            raise RuntimeError(f"no clear point between {mid} and {q}")
+    return res
+
+
 def goals(course, p: PlanParams):
     """[(xy, kind, label)] from the launch mark to the pad."""
     out = [(course.launch, "pass", "launch")]
     cp1 = course.lines["first_corridor"]
-    b, a = _through(cp1.a, cp1.b, out[-1][0], p.gate_m)
+    b, a = _fit(course, p, *_through(cp1.a, cp1.b, out[-1][0], p.gate_m))
     out += [(b, "pass", "cp1_before"), (a, "stop", "cp1_after")]
     ga = course.lines["maze_gate_a"]
-    b, a = _through(ga.a, ga.b, out[-1][0], p.gate_m)
-    out += [(b, "pass", "gate_a_before"), (a, "pass", "gate_a_after")]
     x0, x1, y0, y1 = course.tube
     north, south = np.array([(x0 + x1) / 2, y1 + p.gate_m]), np.array([(x0 + x1) / 2, y0 - p.gate_m])
-    if np.linalg.norm(out[-1][0] - north) > np.linalg.norm(out[-1][0] - south):
+    if np.linalg.norm(ga.center - north) > np.linalg.norm(ga.center - south):
         north, south = south, north
+    if p.gate_a_free:
+        b, a = _fit(course, p, *_cross(ga.a, ga.b, out[-1][0], north, p.gate_m, p.gate_end_m))
+    else:
+        b, a = _fit(course, p, *_through(ga.a, ga.b, out[-1][0], p.gate_m))
+    out += [(b, "pass", "gate_a_before"), (a, "pass", "gate_a_after")]
     out += [(north, "pass", "tube_before"), (south, "pass", "tube_after")]   # re-align on the move after the exit
     w = course.window
     b, a = _through(w.a, w.b, out[-1][0], p.window_m)
@@ -136,7 +198,18 @@ def goals(course, p: PlanParams):
     return out
 
 
+def course_params(course, p: PlanParams):
+    """p with the map's `planner:` options applied."""
+    opts = course.doc.get("planner") or {}
+    known = {f.name for f in fields(PlanParams)}
+    bad = set(opts) - known
+    if bad:
+        raise ValueError(f"unknown planner options in the map: {sorted(bad)}")
+    return replace(p, **opts)
+
+
 def plan(course, p: PlanParams = PlanParams()):
+    p = course_params(course, p)
     grid = Grid(course, p)
     G = goals(course, p)
     wps = [Waypoint(*G[0][0], p.height_m, G[0][1], G[0][2])]
@@ -144,6 +217,8 @@ def plan(course, p: PlanParams = PlanParams()):
         cells = astar(grid, p, a, b)
         P = np.array([grid.center(c) for c in cells])
         P[0], P[-1] = a, b
+        if p.shortcut:
+            P = _shortcut(course, p, P)
         for q in simplify(P, p.simplify_m)[1:-1]:
             wps.append(Waypoint(q[0], q[1], p.height_m))
         wps.append(Waypoint(b[0], b[1], p.height_m, kind, label))

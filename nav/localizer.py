@@ -8,6 +8,10 @@ uncertainty with distance flown. update() is point-to-line ICP solved as a MAP s
 prior (Gauss-Newton, re-associating each iteration): residual = signed distance of a point to its
 nearest face. A fit is accepted only if its median |residual| <= 6 cm and the step is within 4 sigma
 of the prior. Sigmas are reported at the vehicle (yaw error times the lever arm counts).
+
+Hand-placed walls (uncertain_m, see nav/course.py) are not matched against, and points that land
+within uncertain_m + uncertain_pad_m of one are dropped before the fit, so they cannot be matched to
+a nearby real wall instead.
 """
 import math
 from dataclasses import dataclass
@@ -41,6 +45,7 @@ class LocParams:
     drift_yaw_deg_per_m: float = 0.5
     min_sigma_xy_m: float = 0.02
     min_sigma_yaw_deg: float = 0.5
+    uncertain_pad_m: float = 0.10
 
 
 def wall_points(depth_m, K, R_body_cam, t_body_cam, q_wxyz, pose_odom, floor_z, p: LocParams = LocParams()):
@@ -63,6 +68,7 @@ class Localizer:
     def __init__(self, course, z, p: LocParams = LocParams()):
         self.p = p
         self.A, self.B, self.N = course.faces_at(z)
+        self.uncertain = [b for b in course.boxes_at(z, z) if b.uncertain > 0.0]
         self.D = self.B - self.A
         self.L2 = (self.D ** 2).sum(1)
         self.T = SE2()
@@ -118,7 +124,13 @@ class Localizer:
     def update(self, pts_odom):
         """One frame of points (N,2, odom). Returns True if the fit was accepted."""
         p = self.p
-        Pts = np.asarray(pts_odom, float)
+        Pts = np.asarray(pts_odom, float).reshape(-1, 2)
+        if self.uncertain and len(Pts):
+            Q = self.T.apply(Pts)
+            keep = np.ones(len(Pts), bool)
+            for b in self.uncertain:
+                keep &= b.distance(Q) > b.uncertain + p.uncertain_pad_m
+            Pts = Pts[keep]
         if len(Pts) > p.max_points:
             Pts = Pts[np.linspace(0, len(Pts) - 1, p.max_points).astype(int)]
         if len(Pts) < p.min_points:
