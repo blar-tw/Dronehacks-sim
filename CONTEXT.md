@@ -47,45 +47,108 @@ agent sees the change. Numbers match the Approaches tab on DroneHacks HQ.
 
 ### main
 
-- `fa34d42` Justin Yu, Fri Nov 06 19:48: Merge pull request #2 from blar-tw/decisions-2d-grid
-  Record the 2D grid decision
-- `0d73545` Justin Yu, Fri Nov 06 19:48: Record the 2D grid decision
-  The team chose A* on a 2D grid at cruise height over a 3D grid. Adds cruise
-  height as an open question, since the grid depends on it, and closes ToF
-  direction, because no extra sensors means the only ToF sensor points down.
-- `afb102e` Justin Yu, Fri Nov 06 19:20: Merge pull request #1 from blar-tw/context-layer
-  Add a combined team context layer
-- `7779159` Justin Yu, Fri Nov 06 17:11: Add a combined team context layer
-  tools/team_context.py merges every branch's recent commits, changed files
-  and context/DECISIONS.md into one view. Claude Code loads it at session
-  start, and a workflow publishes it to the team-context branch on each push.
-  Records the team's decisions so far, with open conflicts listed.
-  The workflow and hook only apply to branches that contain them, so this
-  needs merging into main, and existing branches need main merged in.
-- `c0b8e90` blar, Thu Nov 05 12:31: Lab workspace snapshot 2026-11-05 (Vision world, READY, disarmed)
-  Project files from /var/lib/flyx-lab/workspace plus read-only
-  inspection output in lab_info/ (lab_inspect.sh).
+- `c29ea58` Basanta Adhikari, Sun Nov 08 03:21: Merge pull request #4 from blar-tw/docs/research-decisions
+  Docs/research decisions
+- `f6bd8d3` blar, Sat Nov 07 16:56: vio: cuVSLAM camera-only (imu: false)
+  Inertial mode diverged in the maze (non-finite covariance, 297 ms stall,
+  16 m jump, never recovered). Lab 2026-11-07: complete with return,
+  arm -> pad 90 s.
+- `0e1f5f0` blar, Sat Nov 07 11:08: nav: no setpoint-lag hover while climbing; lab launch offset
+  - guard: skip the behind-setpoint check in the climb phase (the vehicle lags
+  the ramp while it spools up on the ground; lab: two false hovers on the
+  return takeoff)
+  - mission/node: launch_offset_m, the start is this far ahead of the launch
+  mark; flight.yaml sets 0.20 (lab practice start, LAB_WEB.md)
+  Lab sim 2026-11-07: complete with return, no hovers, CP1 fix moved the map
+- `bece5f1` blar, Sat Nov 07 10:38: nav: checklist stages 6-9 (tunnel exit re-align, hover guard, return leg)
+  - planner: tunnel entry is a pass point, the exit is a stop (re-align there)
+  - follower: no back-and-forth at stops, window localize wait, slow on VIO DEGRADED
+  - guard: last layer; hover on VIO WITHHELD, no camera frames 10 s, or behind
+  the setpoint 2 s; resume after 1 s fine. No landing, no Gate B
+  - mission: return leg after the pad (disarm, re-arm if it fits in 3 min,
+  climb to 2.3 m, fly to the launch mark, land); no takeoff scan
 
-### context-layer (0 ahead of main, 3 behind)
+### docs/research-decisions (0 ahead of main, 5 behind)
 
 
-### localization-mvp (2 ahead of main, 4 behind)
+### new-course-opt (2 ahead of main, 6 behind)
 
-- `ddbd236` blar, Fri Nov 06 16:48: Add the DroneHacks course files
-  Official v3 course (OBJ/MTL, GLB, STEP) and course_map.yaml, the course
-  geometry ARCHITECTURE.md refers to (generated from the OBJ by the local
-  sim's build_world.py), plus the top-view render.
-- `5546e5d` blar, Fri Nov 06 16:38: ev_bridge: keep PX4 aided through VIO loss
-  Weak tracking (fewer than 30 cuVSLAM features per frame) keeps sending
-  with position/velocity sigma growing up to 0.5 m / 0.5 m/s. Insane
-  samples are withheld at most 2 s, then sent at the max sigma with one
-  reset_counter bump, so PX4 never reaches EKF2_NOAID_TOUT (5 s). The old
-  5 s settle after a VIO jump hit that timeout exactly.
-  New /estimator/vio_state (OK / DEGRADED / WITHHELD) for the mission;
+- `3f42112` blar, Sat Nov 07 19:55: nav: new course map v4 on top of noimu-opt
+  - course/course_map_v4.yaml: v3 edited by hand from the organisers' plan:
+  maze dividers M1, M2, M3 removed; diagonal walls d1, d2, d3 added
+  (hand-placed, uncertain_m). flight.yaml uses v4; the lab still runs v3
+  (-p course_map:=course_map.yaml, plans exactly as noimu-opt)
+  - course: uncertain walls are thicker for planning and left out of
+  localization faces; relative map paths resolve in course/
+- `23b3d00` blar, Sat Nov 07 18:32: nav: smooth map corrections, no tunnel/window stops, controlled descent
+  - follower: fix a one-tick setpoint snap back to the previous segment's start
+  at every pass waypoint (jerk at each maze corner)
+  - mission: setpoints use Tc, which slides toward the localizer's T_map_odom at
+  most 5 cm/s and 3 deg/s at the vehicle, so a map fix never jumps the setpoint
+  - planner/follower: tunnel exit is a pass point; speed falls gradually with
+  sigma instead of halving; window approach at 0.15 m/s, straight through when
 
-Files changed: `ARCHITECTURE.md`, `course/course-v3.glb`, `course/course_map.yaml`, `course/course_top.png`, `course/dronehacks-course-v3.step`, `course/obj/README.txt`, `course/obj/dronehacks-course-v3.mtl`, `course/obj/dronehacks-course-v3.obj`, `onboard/config/vision_bridge.yaml`, `onboard/vio/ev_bridge.py`, `onboard/vio/vio_health.py`, `tests/test_vio_loss.py`
+Files changed: `course/course_map_v4.yaml`, `course/course_top_v4.png`, `flight.yaml`, `nav/course.py`, `nav/follower.py`, `nav/localizer.py`, `nav/mission.py`, `nav/node.py`, `nav/planner.py`, `tests/test_course_v4.py`
 
-### hq-site (1 ahead of main, 4 behind)
+### new-course-opt-API (2 ahead of main, 6 behind)
+
+- `3f42112` blar, Sat Nov 07 19:55: nav: new course map v4 on top of noimu-opt
+  - course/course_map_v4.yaml: v3 edited by hand from the organisers' plan:
+  maze dividers M1, M2, M3 removed; diagonal walls d1, d2, d3 added
+  (hand-placed, uncertain_m). flight.yaml uses v4; the lab still runs v3
+  (-p course_map:=course_map.yaml, plans exactly as noimu-opt)
+  - course: uncertain walls are thicker for planning and left out of
+  localization faces; relative map paths resolve in course/
+- `23b3d00` blar, Sat Nov 07 18:32: nav: smooth map corrections, no tunnel/window stops, controlled descent
+  - follower: fix a one-tick setpoint snap back to the previous segment's start
+  at every pass waypoint (jerk at each maze corner)
+  - mission: setpoints use Tc, which slides toward the localizer's T_map_odom at
+  most 5 cm/s and 3 deg/s at the vehicle, so a map fix never jumps the setpoint
+  - planner/follower: tunnel exit is a pass point; speed falls gradually with
+  sigma instead of halving; window approach at 0.15 m/s, straight through when
+
+Files changed: `course/course_map_v4.yaml`, `course/course_top_v4.png`, `flight.yaml`, `nav/course.py`, `nav/follower.py`, `nav/localizer.py`, `nav/mission.py`, `nav/node.py`, `nav/planner.py`, `tests/test_course_v4.py`
+
+### noimu-opt (1 ahead of main, 6 behind)
+
+- `23b3d00` blar, Sat Nov 07 18:32: nav: smooth map corrections, no tunnel/window stops, controlled descent
+  - follower: fix a one-tick setpoint snap back to the previous segment's start
+  at every pass waypoint (jerk at each maze corner)
+  - mission: setpoints use Tc, which slides toward the localizer's T_map_odom at
+  most 5 cm/s and 3 deg/s at the vehicle, so a map fix never jumps the setpoint
+  - planner/follower: tunnel exit is a pass point; speed falls gradually with
+  sigma instead of halving; window approach at 0.15 m/s, straight through when
+
+Files changed: `nav/follower.py`, `nav/mission.py`, `nav/node.py`, `nav/planner.py`
+
+### vio-noimu (0 ahead of main, 6 behind)
+
+
+### nav-fixes (0 ahead of main, 7 behind)
+
+
+### nav-fresh (0 ahead of main, 8 behind)
+
+
+### localization-mvp (0 ahead of main, 11 behind)
+
+
+### nav-review (1 ahead of main, 13 behind)
+
+- `0ae38ed` Daisy Schall, Fri Nov 06 20:58: nav review: accuracy, safety and CPU fixes across nav/ and ev_bridge
+  Static review by seven parallel reviewers; nothing here has been executed
+  (the sandbox blocked running the downloaded code). Run the tests first.
+  - landmarks/node: depth points use the pose interpolated at the image stamp
+  (pose ring buffer), skip frames while yawing > 15 deg/s, reject a TF that
+  is not an optical frame, zero-copy decode and cached ray table.
+  - aligner: Mahalanobis step gate and sigma floor so a time-skewed or
+
+Files changed: `nav/aligner.py`, `nav/config/nav.yaml`, `nav/course.py`, `nav/follower.py`, `nav/landmarks.py`, `nav/mission.py`, `nav/node.py`, `nav/planner.py`, `onboard/config/vision_bridge.yaml`, `onboard/vio/ev_bridge.py`, `onboard/vio/vio_health.py`, `review/REVIEW.md`, and 13 more
+
+### context-layer (0 ahead of main, 16 behind)
+
+
+### hq-site (1 ahead of main, 17 behind)
 
 - `f4074f4` Justin Yu, Fri Nov 06 16:43: Add DroneHacks HQ team site
 
@@ -93,4 +156,13 @@ Files changed: `hq/course3d.png`, `hq/drone.png`, `hq/index.html`, `hq/map.png`
 
 ## Files changed on more than one branch
 
-None.
+- `course/course_map_v4.yaml`: new-course-opt, new-course-opt-API
+- `course/course_top_v4.png`: new-course-opt, new-course-opt-API
+- `flight.yaml`: new-course-opt, new-course-opt-API
+- `nav/course.py`: new-course-opt, new-course-opt-API, nav-review
+- `nav/follower.py`: new-course-opt, new-course-opt-API, noimu-opt, nav-review
+- `nav/localizer.py`: new-course-opt, new-course-opt-API
+- `nav/mission.py`: new-course-opt, new-course-opt-API, noimu-opt, nav-review
+- `nav/node.py`: new-course-opt, new-course-opt-API, noimu-opt, nav-review
+- `nav/planner.py`: new-course-opt, new-course-opt-API, noimu-opt, nav-review
+- `tests/test_course_v4.py`: new-course-opt, new-course-opt-API
