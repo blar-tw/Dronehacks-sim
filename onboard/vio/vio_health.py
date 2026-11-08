@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 from collections import deque
+from typing import NamedTuple
 
 
 class VioHealth:
@@ -51,3 +52,67 @@ class VioHealth:
             return False, self.reason
         self.reason = "ok"
         return True, self.reason
+
+
+class Decision(NamedTuple):
+    send: bool          # publish this sample to PX4
+    state: str          # OK | DEGRADED | WITHHELD
+    pos_var: float      # m^2 added to each position variance
+    vel_var: float      # (m/s)^2 added to each velocity variance
+    reset: bool         # bump reset_counter on this sample
+    forced: bool        # an insane sample sent because the withhold cap ran out
+
+
+class VioLoss:
+    """Keep PX4 aided through weak or lost visual tracking, so its no-aiding
+    timeout (EKF2_NOAID_TOUT, 5 s by default) never runs out. See decision-1.md.
+
+    Weak tracking (fewer than min_features in a frame): keep sending, with the
+    position and velocity sigma growing with the time since the last visually
+    tracked frame, up to a cap. Insane samples (VioHealth) are withheld for at
+    most withhold_max_s, then sent anyway at the capped sigma with one reset."""
+
+    def __init__(self, *, min_features=30, pos_sigma_rate=0.25, pos_sigma_max=0.5,
+                 vel_sigma_rate=0.25, vel_sigma_max=0.5, withhold_max_s=2.0):
+        self.min_features = min_features
+        self.pos_rate, self.pos_max = pos_sigma_rate, pos_sigma_max
+        self.vel_rate, self.vel_max = vel_sigma_rate, vel_sigma_max
+        self.withhold_max_s = withhold_max_s
+        self.weak = True                # no feature count heard yet
+        self.last_visual = None         # time of the last frame with enough features
+        self.withheld_since = None
+        self.forced = False
+
+    def features(self, t, n):
+        """Feature count of the latest cuVSLAM frame, received at time t (s)."""
+        self.weak = n < self.min_features
+        if not self.weak:
+            self.last_visual = t
+
+    def lost_s(self, t):
+        return math.inf if self.last_visual is None else t - self.last_visual
+
+    def decide(self, t, sane):
+        if not sane:
+            if self.withheld_since is None:
+                self.withheld_since = t
+            if t - self.withheld_since < self.withhold_max_s:
+                return Decision(False, "WITHHELD", 0.0, 0.0, False, False)
+            reset = not self.forced
+            self.forced = True
+            return Decision(True, "DEGRADED", self.pos_max ** 2, self.vel_max ** 2, reset, True)
+        self.withheld_since = None
+        self.forced = False
+        if not self.weak:
+            return Decision(True, "OK", 0.0, 0.0, False, False)
+        lost = self.lost_s(t)
+        return Decision(True, "DEGRADED", min(self.pos_max, self.pos_rate * lost) ** 2,
+                        min(self.vel_max, self.vel_rate * lost) ** 2, False, False)
+
+
+def inflate_xyz(cov, var):
+    """Row-major 6x6 covariance with var added to the x, y, z diagonal."""
+    out = list(cov)
+    for i in (0, 7, 14):
+        out[i] += var
+    return out

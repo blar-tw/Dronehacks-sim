@@ -1,1 +1,67 @@
-{"route": [], "params": {}}
+{
+ "_comment": [
+  "Hard-coded course route, window option (local GZ 2026-11-07: all 5 checkpoints, ~87 s, ideal VIO).",
+  "Legs are [forward_m, left_m] from the take-off point and heading (launch mark, facing north up the first corridor).",
+  "Course ENU waypoints: (-2.51,2.58) (-1.37,2.58) (-1.37,0.97) (-0.25,0.97) (-0.25,2.58) (0.94,2.58) gate A, (2.31,2.0) (2.31,-0.75) tunnel, (1.3,-1.75) (0.5,-1.8) (0.093,-2.477) window approach, (-0.894,-2.118) through window, (-2.04,-0.79) pad.",
+  "params: the default 0.9 m stop / 1.2 m wide obstacle corridor is wider than the 1.07 m maze corridors and lands on leg 1; band 0.25 keeps the window sill and boulder tops out of the check."
+ ],
+ "route": [
+  [
+   1.666,
+   -0.005
+  ],
+  [
+   1.666,
+   -1.145
+  ],
+  [
+   0.056,
+   -1.145
+  ],
+  [
+   0.056,
+   -2.265
+  ],
+  [
+   1.666,
+   -2.265
+  ],
+  [
+   1.666,
+   -3.455
+  ],
+  [
+   1.086,
+   -4.825
+  ],
+  [
+   -1.664,
+   -4.825
+  ],
+  [
+   -2.664,
+   -3.815
+  ],
+  [
+   -2.714,
+   -3.015
+  ],
+  [
+   -3.391,
+   -2.608
+  ],
+  [
+   -3.032,
+   -1.621
+  ],
+  [
+   -1.704,
+   -0.475
+  ]
+ ],
+ "params": {
+  "stop_m": 0.35,
+  "corridor_half_m": 0.3,
+  "band_m": 0.25
+ }
+}

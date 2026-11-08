@@ -10,3 +10,17 @@
     required_fields: [position, orientation]
     max_sample_age_s: 0.3
     health_quiet_s: 5.0
+    # VIO loss (decision-1.md): never let PX4 go without vision long enough to
+    # hit its no-aiding timeout (EKF2_NOAID_TOUT, 5 s default) -> failsafe.
+    # Weak tracking = fewer features than min_features in a cuVSLAM frame: keep
+    # sending, adding sigma = rate * seconds since the last good frame, capped.
+    features_topic: /visual_slam/vis/observations_count
+    state_topic: /estimator/vio_state
+    min_features: 30
+    pos_sigma_rate: 0.25    # m per s of weak tracking
+    pos_sigma_max: 0.5      # m; keeps PX4's eph far below COM_POS_FS_EPH (5 m)
+    vel_sigma_rate: 0.25    # m/s per s
+    vel_sigma_max: 0.5      # m/s
+    # Insane samples (jump/speed, health_quiet_s settling) are withheld at most
+    # this long, then sent at the max sigma with one reset_counter bump.
+    withhold_max_s: 2.0
