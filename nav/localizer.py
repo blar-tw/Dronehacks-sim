@@ -6,8 +6,11 @@ points are dropped by height above the floor (floor = the vehicle's odom z at ta
 Localizer: state x = (tx, ty, yaw) of T_map_odom with covariance P. predict() grows the vehicle's
 uncertainty with distance flown. update() is point-to-line ICP solved as a MAP step against the
 prior (Gauss-Newton, re-associating each iteration): residual = signed distance of a point to its
-nearest face. A fit is accepted only if its median |residual| <= 6 cm and the step is within 4 sigma
-of the prior. Sigmas are reported at the vehicle (yaw error times the lever arm counts).
+nearest face. A fit is accepted only if its median |residual| <= 6 cm, the step at the vehicle is at
+most max_step_xy_m / max_step_yaw_deg (a hard cap: the 4-sigma gate alone lets a 0.40 m step through
+at 0.10 m sigma, and more as sigma grows), and the step is within 4 sigma of the prior. Sigmas are
+reported at the vehicle (yaw error times the lever arm counts). odom_reset() follows a PX4 local-frame
+reset without moving the map (it is not a correction, so the cap does not apply to it).
 
 Hand-placed walls (uncertain_m, see nav/course.py) are not matched against, and points that land
 within uncertain_m + uncertain_pad_m of one are dropped before the fit, so they cannot be matched to
@@ -20,7 +23,7 @@ import numpy as np
 
 from refnav.depth import level_points, level_rotation
 
-from .frames import SE2, rot, wrap
+from .frames import SE2, after_odom_reset, rot, wrap
 
 
 @dataclass
@@ -38,6 +41,8 @@ class LocParams:
     points_eff: int = 30              # one frame counts as at most this many independent points
     iters: int = 6
     max_median_m: float = 0.06
+    max_step_xy_m: float = 0.30       # no single fit moves the vehicle's map position further than this
+    max_step_yaw_deg: float = 8.0     # ... or turns the map more than this
     gate_sigma: float = 4.0
     init_sigma_xy_m: float = 0.10
     init_sigma_yaw_deg: float = 2.0
@@ -76,6 +81,7 @@ class Localizer:
         self.vehicle = np.zeros(2)                      # odom xy of the vehicle at the last call
         self.last = "not started"
         self.accepted = 0
+        self.capped = 0                                 # fits rejected by the step cap
 
     def start(self, map_xy, map_yaw, odom_xy, odom_yaw):
         self.T = SE2.from_poses(map_xy, map_yaw, odom_xy, odom_yaw)
@@ -121,6 +127,15 @@ class Localizer:
         H = np.stack([n[:, 0], n[:, 1], n[:, 1] * v[:, 0] - n[:, 0] * v[:, 1]], axis=1)
         return H, r
 
+    def odom_reset(self, old_xy, new_xy, d_yaw):
+        """PX4 reset its local frame: the vehicle's odom xy jumped old_xy -> new_xy, its odom yaw by d_yaw.
+        T moves so the vehicle keeps its map pose; its sigmas at the vehicle stay as they were."""
+        C = _lever(self.T, old_xy) @ self.P @ _lever(self.T, old_xy).T
+        self.T = after_odom_reset(self.T, old_xy, new_xy, d_yaw)
+        self.vehicle = np.asarray(new_xy, float)
+        Ji = np.linalg.inv(_lever(self.T, self.vehicle))
+        self.P = Ji @ C @ Ji.T
+
     def update(self, pts_odom):
         """One frame of points (N,2, odom). Returns True if the fit was accepted."""
         p = self.p
@@ -157,6 +172,12 @@ class Localizer:
         m = math.sqrt(float(dv @ np.linalg.solve(J @ self.P @ J.T, dv)))
         if med > p.max_median_m:
             self.last = f"rejected: median {med * 100:.1f} cm"
+            return False
+        step_xy, step_yaw = float(np.hypot(*dv[:2])), float(dv[2])
+        if step_xy > p.max_step_xy_m or abs(step_yaw) > math.radians(p.max_step_yaw_deg):
+            self.capped += 1
+            self.last = (f"rejected: step {step_xy:.2f} m {math.degrees(step_yaw):+.1f} deg over the cap "
+                         f"({p.max_step_xy_m:.2f} m, {p.max_step_yaw_deg:.0f} deg)")
             return False
         if m > p.gate_sigma:
             self.last = f"rejected: step {np.hypot(*dv[:2]):.2f} m {math.degrees(dv[2]):+.1f} deg = {m:.1f} sigma"

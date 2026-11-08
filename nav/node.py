@@ -17,7 +17,7 @@ from refnav import depth as D
 
 from . import course as COURSE
 from . import planner
-from .frames import enu_to_ned, heading_to_yaw, ned_to_enu, yaw_to_heading
+from .frames import enu_to_ned, heading_to_yaw, ned_to_enu, odom_after_reset, wrap, yaw_to_heading
 from .localizer import Localizer, wall_points
 from .mission import Mission, MissionParams, Vehicle
 from .yaw import ViewScorer
@@ -78,6 +78,7 @@ class NavNode(Node):
         self._prev_yaw = None
         self._follow_seen = None
         self.rng = None                                # (receive time, metres) of the down rangefinder
+        self.resets = None                             # PX4 (xy_reset_counter, heading_reset_counter)
         self.poses = deque(maxlen=100)                 # (t, x, y, z, yaw): the pose at each depth frame's stamp
         self.create_timer(0.05, self._tick)
         self.create_timer(0.5, self._publish_status)
@@ -90,12 +91,40 @@ class NavNode(Node):
         x, y, z = ned_to_enu(m.x, m.y, m.z)
         yaw = heading_to_yaw(m.heading)
         now = self._now()
+        self._follow_reset(m, x, y)
         if self._prev_yaw is not None and now > self._prev_yaw[1]:
             self.yaw_rate = abs(math.remainder(yaw - self._prev_yaw[0], 2 * math.pi)) / (now - self._prev_yaw[1])
         self._prev_yaw = (yaw, now)
         self.v.pos, self.v.yaw = (x, y, z), yaw
         self.poses.append((m.timestamp_sample * 1e-6, x, y, z, yaw))
         self.v.pos_ok = bool(m.xy_valid and m.z_valid)
+
+    def _follow_reset(self, m, x, y):
+        """PX4 moved its local frame (EKF reset, e.g. after ev_bridge forces a VIO sample with a reset):
+        move the map estimate, setpoints and stored poses with it, so the map does not need a correction
+        that the localizer's step cap would refuse."""
+        counters = (int(m.xy_reset_counter), int(m.heading_reset_counter))
+        if self.resets is None or counters == self.resets:
+            self.resets = counters
+            return
+        xy_reset, heading_reset = counters[0] != self.resets[0], counters[1] != self.resets[1]
+        self.resets = counters
+        de, dn = (float(m.delta_xy[1]), float(m.delta_xy[0])) if xy_reset else (0.0, 0.0)   # NED -> ENU
+        d_yaw = -float(m.delta_heading) if heading_reset else 0.0          # heading is clockwise from north
+        if not all(math.isfinite(c) for c in (de, dn, d_yaw)):
+            self.get_logger().warn("PX4 reset with a non-finite delta: not followed")
+            return
+        old, new = (x - de, y - dn), (x, y)
+        self.mission.on_odom_reset(old, new, d_yaw)
+        moved = []
+        for t, px, py, pz, pyaw in self.poses:                # poses stored before the reset
+            qx, qy = odom_after_reset((px, py), old, new, d_yaw)
+            moved.append((t, float(qx), float(qy), pz, wrap(pyaw + d_yaw)))
+        self.poses = deque(moved, maxlen=self.poses.maxlen)
+        if self._prev_yaw is not None:
+            self._prev_yaw = (wrap(self._prev_yaw[0] + d_yaw), self._prev_yaw[1])
+        self.get_logger().info(f"PX4 local frame reset followed: {math.hypot(de, dn):.2f} m, "
+                               f"{math.degrees(d_yaw):+.1f} deg")
 
     def _on_att(self, m):
         self.q = tuple(float(c) for c in m.q)

@@ -8,8 +8,10 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from nav import course as COURSE  # noqa: E402
 from nav import planner  # noqa: E402
-from nav.frames import SE2, enu_to_ned, heading_to_yaw, ned_to_enu, yaw_to_heading  # noqa: E402
-from nav.localizer import Localizer, wall_points  # noqa: E402
+from nav.frames import (SE2, enu_to_ned, heading_to_yaw, ned_to_enu, odom_after_reset, wrap,  # noqa: E402
+                        yaw_to_heading)
+from nav.localizer import Localizer, LocParams, wall_points  # noqa: E402
+from nav.mission import Mission  # noqa: E402
 from nav.yaw import ViewScorer  # noqa: E402
 
 C = COURSE.load()
@@ -100,3 +102,68 @@ def test_floor_points_do_not_move_the_map():
     before = loc.T.vec()
     assert not loc.update(pts)
     assert np.allclose(loc.T.vec(), before)
+
+
+def _offset_fit(p):
+    """test_injected_offset_converges' scene: the right fit moves the vehicle 0.157 m and turns 3 deg."""
+    scorer = ViewScorer(C, Z, step_m=0.03)
+    loc = Localizer(C, Z, p)
+    truth_xy, truth_yaw = np.array([-1.37, 1.8]), -math.pi / 2 + 0.2
+    T_true = SE2(0.12, -0.08, math.radians(3.0))
+    odom_xy = T_true.inverse_apply(truth_xy)
+    loc.start(truth_xy, truth_yaw, odom_xy, truth_yaw - T_true.yaw)
+    loc.T = SE2(0.0, 0.0, 0.0)
+    return loc, T_true.inverse_apply(_scan(truth_xy, truth_yaw, scorer))
+
+
+def test_step_cap_rejects_a_fit_that_moves_the_vehicle_too_far():
+    loc, pts_odom = _offset_fit(LocParams(max_step_xy_m=0.10))      # the fit needs 0.157 m
+    for _ in range(5):
+        assert not loc.update(pts_odom)
+    assert loc.capped == 5 and loc.accepted == 0, loc.last
+    assert "over the cap" in loc.last
+    assert np.allclose(loc.T.vec(), 0.0)
+
+
+def test_step_cap_rejects_a_fit_that_turns_the_map_too_far():
+    loc, pts_odom = _offset_fit(LocParams(max_step_yaw_deg=2.0))    # the fit needs 3 deg
+    assert not loc.update(pts_odom)
+    assert loc.capped == 1 and "over the cap" in loc.last
+    assert np.allclose(loc.T.vec(), 0.0)
+
+
+def test_default_cap_takes_the_same_fit():
+    loc, pts_odom = _offset_fit(LocParams())
+    assert loc.update(pts_odom), loc.last
+    assert loc.capped == 0
+
+
+def test_odom_reset_keeps_the_map_pose_and_sigma():
+    loc = Localizer(C, Z)
+    old, yaw_old = np.array([0.3, -0.2]), 0.4
+    loc.start(C.launch, math.pi / 2, old, yaw_old)
+    T0 = SE2(*loc.T.vec())
+    cov0 = loc.vehicle_cov()
+    new, d_yaw = np.array([0.9, 0.5]), 0.3                         # a 0.92 m jump: far over the step cap
+    loc.odom_reset(old, new, d_yaw)
+    assert np.allclose(loc.T.apply(new), C.launch)
+    assert abs(wrap(yaw_old + d_yaw + loc.T.yaw - math.pi / 2)) < 1e-9
+    assert np.allclose(loc.vehicle_cov(), cov0)
+    q_old = np.array([1.5, 2.0])                                    # any fixed point stays put in the map
+    assert np.allclose(loc.T.apply(odom_after_reset(q_old, old, new, d_yaw)), T0.apply(q_old))
+
+
+def test_mission_setpoints_follow_an_odom_reset():
+    m = Mission(C, planner.plan(C), Localizer(C, Z), ViewScorer(C, Z))
+    m.loc.start(C.launch, math.pi / 2, (0.4, 0.9), math.pi / 2)
+    m.Tc = SE2(0.1, -0.2, 0.3)                                      # mid-blend: not equal to loc.T
+    m.sp, m.hold_sp = [0.5, 1.0, 0.6, 0.2], [0.4, 0.9, 0.6, 0.1]
+    Tc0, sp0 = SE2(*m.Tc.vec()), list(m.sp)
+    old, new, d_yaw = (0.4, 0.9), (1.4, 0.4), -0.25
+    m.on_odom_reset(old, new, d_yaw)
+    assert np.allclose(m.Tc.apply(m.sp[:2]), Tc0.apply(sp0[:2]))   # same map target
+    assert abs(wrap(m.sp[3] + m.Tc.yaw - (sp0[3] + Tc0.yaw))) < 1e-9
+    assert m.sp[2] == sp0[2]
+    assert np.allclose(m.hold_sp[:2], new)                          # the hover point was the vehicle
+    assert np.allclose(m.loc.T.apply(new), C.launch)
+
