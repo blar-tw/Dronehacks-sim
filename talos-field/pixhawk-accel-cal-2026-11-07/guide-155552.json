@@ -1,0 +1,313 @@
+{
+  "mode": "guide",
+  "started": 1794095755.109298,
+  "uid": 3473490359910740788,
+  "limits": {
+    "ok_deg": 2.0,
+    "cancel_deg": 3.0,
+    "tol_pct": 0.5
+  },
+  "params_before": {
+    "CAL_ACC0_ID": {
+      "value": 9.734576605731712e-39,
+      "hex": "0a006a00",
+      "type": 6
+    },
+    "CAL_ACC1_ID": {
+      "value": 3.489762866988309e-39,
+      "hex": "0a002600",
+      "type": 6
+    },
+    "CAL_ACC0_XOFF": {
+      "value": 0.0012771934270858765,
+      "hex": "8067a73a",
+      "type": 9
+    },
+    "CAL_ACC0_YOFF": {
+      "value": 0.001145884394645691,
+      "hex": "8031963a",
+      "type": 9
+    },
+    "CAL_ACC0_ZOFF": {
+      "value": 0.06560230255126953,
+      "hex": "805a863d",
+      "type": 9
+    },
+    "CAL_ACC0_XSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC0_YSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC0_ZSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC1_XOFF": {
+      "value": -0.0010569021105766296,
+      "hex": "c0878aba",
+      "type": 9
+    },
+    "CAL_ACC1_YOFF": {
+      "value": -0.0032822489738464355,
+      "hex": "001b57bb",
+      "type": 9
+    },
+    "CAL_ACC1_ZOFF": {
+      "value": -0.19159412384033203,
+      "hex": "403144be",
+      "type": 9
+    },
+    "CAL_ACC1_XSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC1_YSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC1_ZSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    }
+  },
+  "attempt_count": 1,
+  "calibration": {
+    "attempt": 1,
+    "sides": {
+      "right": {
+        "px4_reported": [
+          1.018,
+          -9.836,
+          -0.117
+        ],
+        "SCALED_IMU": {
+          "mean": [
+            1.0149882749999999,
+            -9.834151257608696,
+            -0.052017882608695644
+          ],
+          "n": 46,
+          "tilt_deg": 5.900344026416598
+        },
+        "SCALED_IMU2": {
+          "mean": [
+            0.8915523978260869,
+            -9.768702528260869,
+            -0.09358955108695652
+          ],
+          "n": 46,
+          "tilt_deg": 5.243215380004323
+        },
+        "px4_tilt_deg": 5.9475435367785705,
+        "worst_tilt_deg": 5.9475435367785705
+      }
+    },
+    "statustext": [
+      [
+        1794095769.1527529,
+        "[cal] calibration started: 2 accel"
+      ],
+      [
+        1794095769.2050822,
+        "[cal] pending: back front left right up down"
+      ],
+      [
+        1794095769.255261,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095770.319753,
+        "Preflight Fail: horizontal position unstable"
+      ],
+      [
+        1794095772.3997078,
+        "Preflight Fail: horizontal position unstable"
+      ],
+      [
+        1794095774.5357492,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095778.089002,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095778.5479429,
+        "[cal] detected motion, hold still..."
+      ],
+      [
+        1794095787.839812,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095789.110197,
+        "[cal] right orientation detected"
+      ],
+      [
+        1794095789.160643,
+        "[cal] right orientation detected"
+      ],
+      [
+        1794095789.2108748,
+        "[cal] Hold still, measuring right side"
+      ],
+      [
+        1794095790.1307251,
+        "[cal] right side result: [1.018 -9.836 -0.117]"
+      ],
+      [
+        1794095790.183914,
+        "[cal] progress <17>"
+      ],
+      [
+        1794095790.235167,
+        "[cal] right side done, rotate to a different side"
+      ],
+      [
+        1794095790.287343,
+        "[cal] right side done, rotate to a different side"
+      ],
+      [
+        1794095790.438805,
+        "[cal] calibration cancelled"
+      ]
+    ],
+    "started": 1794095769.098251,
+    "acks": [
+      0,
+      1,
+      0
+    ],
+    "guard_cancel": {
+      "side": "right",
+      "tilt_deg": 5.9475435367785705
+    },
+    "result": "cancelled",
+    "params_unchanged_after": true
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "sides": {
+        "right": {
+          "px4_reported": [
+            1.018,
+            -9.836,
+            -0.117
+          ],
+          "SCALED_IMU": {
+            "mean": [
+              1.0149882749999999,
+              -9.834151257608696,
+              -0.052017882608695644
+            ],
+            "n": 46,
+            "tilt_deg": 5.900344026416598
+          },
+          "SCALED_IMU2": {
+            "mean": [
+              0.8915523978260869,
+              -9.768702528260869,
+              -0.09358955108695652
+            ],
+            "n": 46,
+            "tilt_deg": 5.243215380004323
+          },
+          "px4_tilt_deg": 5.9475435367785705,
+          "worst_tilt_deg": 5.9475435367785705
+        }
+      },
+      "statustext": [
+        [
+          1794095769.1527529,
+          "[cal] calibration started: 2 accel"
+        ],
+        [
+          1794095769.2050822,
+          "[cal] pending: back front left right up down"
+        ],
+        [
+          1794095769.255261,
+          "[cal] hold vehicle still on a pending side"
+        ],
+        [
+          1794095770.319753,
+          "Preflight Fail: horizontal position unstable"
+        ],
+        [
+          1794095772.3997078,
+          "Preflight Fail: horizontal position unstable"
+        ],
+        [
+          1794095774.5357492,
+          "Preflight Fail: heading estimate not stable"
+        ],
+        [
+          1794095778.089002,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095778.5479429,
+          "[cal] detected motion, hold still..."
+        ],
+        [
+          1794095787.839812,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095789.110197,
+          "[cal] right orientation detected"
+        ],
+        [
+          1794095789.160643,
+          "[cal] right orientation detected"
+        ],
+        [
+          1794095789.2108748,
+          "[cal] Hold still, measuring right side"
+        ],
+        [
+          1794095790.1307251,
+          "[cal] right side result: [1.018 -9.836 -0.117]"
+        ],
+        [
+          1794095790.183914,
+          "[cal] progress <17>"
+        ],
+        [
+          1794095790.235167,
+          "[cal] right side done, rotate to a different side"
+        ],
+        [
+          1794095790.287343,
+          "[cal] right side done, rotate to a different side"
+        ],
+        [
+          1794095790.438805,
+          "[cal] calibration cancelled"
+        ]
+      ],
+      "started": 1794095769.098251,
+      "acks": [
+        0,
+        1,
+        0
+      ],
+      "guard_cancel": {
+        "side": "right",
+        "tilt_deg": 5.9475435367785705
+      },
+      "result": "cancelled",
+      "params_unchanged_after": true
+    }
+  ]
+}

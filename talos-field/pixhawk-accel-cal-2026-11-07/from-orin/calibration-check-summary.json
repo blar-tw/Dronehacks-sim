@@ -1,0 +1,183 @@
+{
+  "state": "GYRO_DONE_ACCEL_FIT_REJECTED_BACKUP_RESTORED",
+  "verified_utc": "2026-11-07 22:48:04 UTC",
+  "hardware_uid": 3473490359910740788,
+  "firmware": "1.16.2",
+  "user_confirmed_props_removed": true,
+  "telemetry_live": true,
+  "gyro": {
+    "explicit_completion": true,
+    "artifact": "gyro-003/result.json",
+    "note": "Before/after gyro parameter bytes were unchanged; completion does not imply offsets changed."
+  },
+  "accelerometer": {
+    "explicit_six_face_completion": true,
+    "accuracy_accepted": false,
+    "quality": {
+      "scope": "Post-fit geometry check of PX4-logged averaged six-face vectors; completion is separate from accuracy",
+      "px4_explicit_completion": true,
+      "fit_accepted_for_flight": false,
+      "vectors_m_s2": {
+        "back": [
+          9.256,
+          0.021,
+          -3.453
+        ],
+        "front": [
+          -9.419,
+          0.116,
+          -3.005
+        ],
+        "right": [
+          0.913,
+          -9.29,
+          -3.393
+        ],
+        "left": [
+          0.948,
+          9.412,
+          -2.854
+        ],
+        "up": [
+          1.333,
+          -0.059,
+          9.693
+        ],
+        "down": [
+          0.031,
+          0.102,
+          -9.959
+        ]
+      },
+      "face_axis_deviation_degrees": {
+        "back": 20.45864457967205,
+        "front": 17.706910339740872,
+        "right": 20.717762326275935,
+        "left": 17.719751041213314,
+        "up": 7.83788025842423,
+        "down": 0.613302920297089
+      },
+      "opposing_pose_angle_degrees": {
+        "back/front": 141.8396512214708,
+        "left/right": 141.57908570607376,
+        "up/down": 171.98797995657597
+      },
+      "reason": "Large opposing-pose errors contaminate the scale fit. Restore exact pre-calibration accel fields and repeat later with accurately supported poses. Preflight did not pass; no flight clearance."
+    },
+    "rejection_reason": "Opposing poses differed by only about142 degrees rather than180 degrees. Independent pre-EKF gravity measurements regressed by4.36/5.06 percent.",
+    "rolled_back": true,
+    "exact_restored_fields": [
+      "CAL_ACC0_XOFF",
+      "CAL_ACC0_XSCALE",
+      "CAL_ACC0_YOFF",
+      "CAL_ACC0_YSCALE",
+      "CAL_ACC0_ZOFF",
+      "CAL_ACC0_ZSCALE",
+      "CAL_ACC1_XOFF",
+      "CAL_ACC1_XSCALE",
+      "CAL_ACC1_YOFF",
+      "CAL_ACC1_YSCALE",
+      "CAL_ACC1_ZOFF",
+      "CAL_ACC1_ZSCALE"
+    ],
+    "all_1108_parameter_value_bytes_and_types_match_original_backup": true,
+    "rollback_artifact": "accel-003-rollback-001/result.json"
+  },
+  "pre_rollback_pre_ekf_imu": {
+    "SCALED_IMU": {
+      "n": 48,
+      "accel_mean_m_s2": {
+        "xacc": 0.110937728125,
+        "yacc": 0.027376897916666663,
+        "zacc": -9.378017672916664
+      },
+      "norm_mean_m_s2": 9.379137293497662,
+      "norm_std_m_s2": 0.055854013186367193,
+      "mean_gravity_error_percent": -4.359416380745085,
+      "gyro_mean_rad_s": {
+        "xgyro": 6.25e-05,
+        "ygyro": -0.0011041666666666667,
+        "zgyro": -0.00025
+      }
+    },
+    "SCALED_IMU2": {
+      "n": 48,
+      "accel_mean_m_s2": {
+        "xacc": -0.005516240625,
+        "yacc": 0.049033249999999994,
+        "zacc": -9.31018834375
+      },
+      "norm_mean_m_s2": 9.310669510261384,
+      "norm_std_m_s2": 0.03121485135528566,
+      "mean_gravity_error_percent": -5.057593467071985,
+      "gyro_mean_rad_s": {
+        "xgyro": 0.0024166666666666664,
+        "ygyro": -0.00014583333333333335,
+        "zgyro": 0.0005416666666666666
+      }
+    }
+  },
+  "post_rollback_pre_ekf_imu": {
+    "SCALED_IMU": {
+      "n": 48,
+      "accel_mean_m_s2": {
+        "xacc": 0.017570247916666667,
+        "yacc": 0.09193734375,
+        "zacc": -9.893684018750001
+      },
+      "norm_mean_m_s2": 9.894411660339292,
+      "norm_std_m_s2": 0.03363588858160076,
+      "mean_gravity_error_percent": 0.8949198792583823,
+      "gyro_mean_rad_s": {
+        "xgyro": 0.0010833333333333333,
+        "ygyro": -0.0008958333333333333,
+        "zgyro": -0.0002708333333333333
+      }
+    },
+    "SCALED_IMU2": {
+      "n": 48,
+      "accel_mean_m_s2": {
+        "xacc": -0.13014241770833335,
+        "yacc": 0.1103248125,
+        "zacc": -9.926985767708333
+      },
+      "norm_mean_m_s2": 9.928751468343515,
+      "norm_std_m_s2": 0.029004744351615645,
+      "mean_gravity_error_percent": 1.2450884689829467,
+      "gyro_mean_rad_s": {
+        "xgyro": 0.0024583333333333336,
+        "ygyro": 6.25e-05,
+        "zgyro": -0.000125
+      }
+    }
+  },
+  "latest_preflight": {
+    "sampled_unix_s": 1794091684.7253513,
+    "sampled_utc": "2026-11-07 22:48:04 UTC",
+    "scope": "Fresh post-rollback USB/ROS ground check; props removed",
+    "arming_state": "disarmed",
+    "preflight_checks_pass": false,
+    "heading_good_for_control": false,
+    "battery_connected": false,
+    "battery_voltage_v": 0.0009114074637182057,
+    "manual_control_signal_lost": true,
+    "gcs_connection_lost": true,
+    "local_position_valid": true,
+    "tilt_aligned": true,
+    "yaw_aligned_to_north": false,
+    "external_vision_position_fusion": true,
+    "external_vision_yaw_fusion": true,
+    "vehicle_at_rest": true,
+    "rc_samples": 0
+  },
+  "limitations": [
+    "Only stationary gravity repeatability was checked after restoration; precise six-axis accuracy and flight readiness remain unverified.",
+    "SCALED_IMU and SCALED_IMU2 use calibrated vehicle_imu before EKF bias subtraction. HIGHRES_IMU alone could mask a calibration error.",
+    "Fresh estimator_sensor_bias was unavailable; absence of a warning in a short sample does not establish bias clearance."
+  ],
+  "required_next_steps": [
+    "Repeat accurate six-face accelerometer calibration using rigid orthogonal support and verify the resulting fit.",
+    "Connect normal flight-battery/power-module supply and validate the RC link, keeping props removed.",
+    "Resolve actual heading/control-frame requirements and recheck all live preflight conditions without disabling checks."
+  ]
+}

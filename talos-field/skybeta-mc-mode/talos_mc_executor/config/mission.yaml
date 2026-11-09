@@ -1,0 +1,46 @@
+# TALOS MC executor mission. ENU in the cuVSLAM "odom" frame, metres.
+# "East"/"North" = whatever the drone's x/y pointed when SLAM started.
+#
+# Write numbers as floats (2.0, not 2). A list that mixes 2 and 2.0 is
+# rejected by ROS 2 before the node even starts.
+talos_mc_executor:
+  ros__parameters:
+    # Takeoff (workshop: takeoff())
+    hover_altitude_m: 1.5      # above the start point; envelope ceiling is 3.0
+    takeoff_settle_s: 3.0      # hover this long at altitude before moving on
+    climb_speed_mps: 0.5
+
+    # Waypoints (workshop: CustomWaypoints). x, y, z triples, offsets from the
+    # point where Offboard started; z is height above that point.
+    # There is NO horizontal geofence: make sure these fit the room/netting.
+    waypoints_enu_m: [
+      2.0, 0.0, 1.5,
+      2.0, 2.0, 1.5,
+      0.0, 2.0, 1.5,
+      0.0, 0.0, 1.5,
+    ]
+    cruise_speed_mps: 0.5      # carrot speed; pose setpoints are NOT speed-capped
+    max_lead_m: 1.0            # never command a point more than ~this far ahead
+    arrival_radius_m: 0.3
+
+    # Yaw spin (workshop: CustomYaw). OFF until you have measured the
+    # odom-vs-PX4 yaw offset on the bench (competitor guide section 1): an
+    # uncorrected offset makes the spin start with a sudden turn of that size.
+    # Slow on purpose: cuVSLAM is stereo-only.
+    yaw_spin_enabled: false
+    yaw_rate_dps: 10.0
+    yaw_max_lead_deg: 25.0     # commanded heading waits if the drone lags this much
+    yaw_settle_s: 2.0
+
+    # "Land" (workshop: land()). skybeta has no land command: descend to this
+    # height above the start and hold; the safety pilot lands.
+    descend_speed_mps: 0.3
+    handoff_altitude_m: 0.5
+
+    # Safety. Limits enforced at startup: speeds <= 1.5 m/s, max_lead_m <= 2,
+    # every height in [0.3, 3.0] m (the default envelope; if you tighten
+    # max_altitude_m in the launch, keep these below it too).
+    step_timeout_s: 30.0       # margin on top of each step's expected time
+    odom_timeout_s: 0.5        # freeze the mission if odometry is older
+    state_timeout_s: 1.0       # /skybeta/state is 5 Hz; older = not trusted
+    publish_rate_hz: 10.0      # must stay above 2 Hz or PX4 leaves Offboard

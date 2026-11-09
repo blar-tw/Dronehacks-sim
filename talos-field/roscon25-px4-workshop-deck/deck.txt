@@ -1,0 +1,1137 @@
+BUILD • LAUNCH • SOAR
+Advanced Aerial Robotics with PX4 and ROS: Custom Flight Modes and Beyond
+Beniamino Pozzan
+beniamino.pozzan@gmail.com
+
+Patrik Pordi
+pordipatrik@gmail.com
+
+Alexis Guijarro
+totonzx@gmail.com
+
+github.com/Dronecode/roscon-25-workshop
+
+Pre Workshop Survey
+
+5+ years in GNC for aerial robotics
+
+PX4 maintainer (ROS 2 integration)
+
+3 years in GNSS-denied navigation
+
+PhD in Control System Engineering
+whoami
+Beniamino Pozzan
+Senior Robotics Engineer
+Archangel Autonomy
+Build, launch, and soar with Dronecode
+
+ROS2 teaching experience
+3 years of PX4 experience
+PX4 driver development for ARK
+PhD fellow in nature conservation project
+whoami
+Patrik Pordi
+Robotics & Drone Engineer
+University of Southern Denmark
+Build, launch, and soar with Dronecode
+
+9 years in OSS for aerial robotics
+Co-Lead ROS Aerial Robotics CWG
+PX4 Board Maintainer for 3DR/mRo
+MS in CS / Mechatronics Eng
+whoami
+Alexis Guijarro
+Lead Software Engineer
+3DR
+Build, launch, and soar with Dronecode
+
+Day overview
+08:00 – Introduction & Environment Setup
+09:30 – PX4 ROS 2 Interface Library, Custom Flight Modes
+11:00 – Mode Executors and Multi-Vehicle Control
+12:00 – Lunch Break
+13:00 – Advanced Control & Perception Applications
+15:30 – From Simulation to Hardware & Architecture Patterns
+16:30 – Q&A, Open Lab & Individual Consultations
+20:00 – Aerial Robotics Meetup, sponsored by Dronecode
+
+Aerial Robotics Meetup, tonight!
+Tonight, 8:00 to 11:00 PMCRAFT Beer Market, 1 Adelaide St E (short walk from the venue)Sponsored by Dronecode. Food and drinks are on us.
+Talk shop on control architectures, state estimation, and open source flight stacks with the people who actually maintain them.
+
+You've been stuck in a room with us all day, so come argue about EKFs over a beer tonight instead. 36 people are already in, space is limited
+
+Prerequisites  - environment setup - architecture overview
+In this section you will
+Understand the requirements for running the exercise
+Set up the simulation environment
+Fly a drone in Gazebo without ROS 2
+Attach ROS 2 to the simulation
+Echo PX4 topics in ROS 2
+Visualize PX4 data with Foxglove
+
+Environment Setup
+REQUIREMENTS:
+Install Foxglove https://foxglove.dev/download
+Download and install QGC https://qgroundcontrol.com
+Clone PX4 repo: https://docs.px4.io/main/en/sim_gazebo_gz/#installation-ubuntu-linux	git clone -b release/1.18 https://github.com/PX4/PX4-Autopilot.git
+Prepare workspace and clone workshop repo https://github.com/Dronecode/roscon-25-workshop : 	mkdir -p ~/workspaces/px4_roscon26_ws/src
+cd ~/workspaces/px4_roscon26_ws/src
+git clone git@github.com:Dronecode/roscon-25-workshop.git px4-roscon-workshop
+git clone https://github.com/Dronecode/roscon-25-workshop.git px4-roscon-workshop
+cd ~/workspaces/px4_roscon26_ws
+   		vcs import src < ./src/px4-roscon-workshop/jazzy.repos
+
+
+Environment Setup, dockerless, Ubuntu 22.04/24.04, WSL 2
+Follow PX4 simulation setup instructions https://docs.px4.io/main/en/sim_gazebo_gz/#installation-ubuntu-linuxTo setup PX4 SITL build toolchain and download Gazebo HarmonicVerify it by starting a simple simulation over Gazebo, no ROS 2 involved:	cd ~/PX4-Autopilot	make px4_sitl gz_x500
+Install ROS 2 (Jazzy or Humble depending on OS version)https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html. Pick ros-jazzy-desktophttps://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html. Pick ros-humble-desktop
+Install ROS 2 developer tools: sudo apt install ros-dev-tools
+Install dependencies:	cd ~/workspaces/px4_roscon26_ws
+source /opt/ros/jazzy/setup.bash # source /opt/ros/humble/setup.bash
+rosdep install -i --from-paths src --skip-keys OpenCV
+
+
+Environment Setup, docker
+Retrieve px4io/px4-dev-ros2-gazebo:main-jazzy docker image or build it yourself https://github.com/PX4/PX4-Autopilot/pull/28730 
+Start the container	cd ~/workspaces/px4_roscon26_ws/src/px4-roscon-workshop	./docker/docker_run.sh ~/PX4-Autopilot
+Set HEADLESS=1 if you don’t want GUI to run
+To leverage GPU acceleration, if available, refer to https://docs.px4.io/main/en/simulation/gazebo_container_gui 
+From inside the container, install the workspace dependencies and build the workspace	apt update
+rosdep install -y -i --from-paths src --skip-keys OpenCV
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install
+
+Build, launch, and soar with Dronecode
+
+
+Neutral standards body for the drone industry since 2014
+25 Years of being the place where competitors collaborate.
+Members trust us with IP, governance, and brand. Maintainers trust us not to favor one company. Regulators trust our specs. That trust took 25 years, and is structurally hard for a new entity to replicate.
+Global community of 15,000+ contributors
+Production ready used by over 1 million drones
+Convener, host, standards body, operator.
+
+Open Source Autonomy Firmware and Compute Platforms
+Lifting the Industry
+
+Lifting the Industry
+Open Source Mission Planning and Telemetry
+
+Lifting the Industry
+Open Source Development Platforms
+
+Limitless vehicle type support from traditional Quadcopters to highly reliable VTOLs of all sizes
+Lifting the Industry
+
+Lifting the Industry
+Guinness record breaking drone swarms
+
+Lifting the Industry
+Battlefield tested drone swarms
+
+Platinum
+Gold
+Member Community
+
+Silver
+Member Community
+
+Lifetime Achievements
+$800M Project Value
++60M Total Lines of Code
++15K Total Unique Contributors
+Putting things into perspective
+Build, launch, and soar with Dronecode
+
+Data Provided by
+
+Contribution Distribution by Project (2025)
+Numbers from 2025
++17,900 Commits
++3,300 PRs submitted
++2,800 PRs merged
++650 Contributors
++99 Organizations
+
+2025 Annual Report: Year In Review
+Read the full report for contribution metrics, project information, membership roster, and event reports
+
+The Dronecode Stack
+
+Autonomy Firmware. PX4 Autopilot.
+The flight stack. Every domain: air, ground, water, and space
+
+Autonomy Hardware. Pixhawk Open Standards.
+Open hardware standards. 100-plus boards, 40-plus manufacturers.
+The Dronecode Stack
+Telemetry Protocols. MAVLink.
+The messaging protocol. The lingua franca of uncrewed systems.
+
+Telemetry SDK. MAVSDK.
+The library developers use to talk to MAVLink. Multiple languages.
+
+Mission Planner. QGroundControl.
+The cross-platform ground control station. Desktop and mobile
+
+The Stack
+at a Glance
+Pixhawk
+PX4 Autopilot
+MAVLink
+MAVSDK
+QGroundControl
+ROS 2
+Build, launch, and soar with Dronecode
+
+
+Pixhawk Project: Autonomy Hardware
+Open Hardware & Open Standards
+Started as a flight controller open hardware project with the first versions of Pixhawk’s
+Evolved into an Open Standard for
+Flight controllers
+Payloads (Gimbals)
+Smart Batteries
+Connectors
+Debuggers
+Build, launch, and soar with Dronecode
+
+Pixhawk: +16 years of community trust
+Build, launch, and soar with Dronecode
+
+Pixhawk: Latest Hardware
+ARK Electronics ARKV6X
+$400
+NXP MR-VMU-RT1176
+$300
+Build, launch, and soar with Dronecode
+
+The Pixhawk project evolved from an Open Hardware effort into an Open Standards project
+Our open standards are lifting the drone industry
+From serial connectors, to full blown flight controller architectures, we excel in quality and safety
+The latest generation of Pixhawk autopilots are the most advanced yet.
+https://pixhawk.org/
+Pixhawk: Drone Open Standards
+
+Pixhawk: AI-ready Compute Hardware
+ARK Electronics
+$1,100.00
+
+ARK V6X
+NVidia Jetson Family
+Holybro
+$1,940
+
+Pixhawk 6X
+NVidia Jetson Family
+NXP
+$299.00
+
+NavQPlus i.MX 8M Plus
+ModalAI
+$1,249.99
+
+Qualcomm RB5
+Build, launch, and soar with Dronecode
+
+Pixhawk Flight Controller FMUv6X
+
+Pixhawk Flight Controller FMUv6X
+
+
+Open, lightweight messaging protocol
+
+One neutral steward
+Open governance, public dialect process, transparent releases
+Backwards compatibility taken seriously across a decade-plus
+Adopted across the industry, on every continent, by hundreds of vendors
+MAVLink: The messaging protocol that connects it all 
+Publish Subscribe streams
+Point to Point sub protocols with retransmission
+Runs on every major autopilot and GCS
+PX4 Autopilot, ArduPilot, QGroundControl, Mission Planner
+Microservices & Dialects
+
+Seventeen years of backwards compatibility
+
+Dialects are XML message set extensions layered on top of the core messages.
+A dialect includes common.xml and adds its own messages in an allocated ID range. No core message is touched, dialects never collide.
+Systems that don't speak a dialect ignore its messages and keep interoperating on the core set.
+Proven for over a decade: ArduPilot runs its own dialect (ardupilotmega.xml), vendors ship dialects for gimbals, ADS-B, and companion devices.
+Every improvement to the core is inherited automatically. Forks diverge. Dialects ride along.
+MAVLink Dialects: extend without forking
+standard.xml
+common.xml
+minimal.xml
+dialect.xml
+CUSTOM.xml
+
+MAVLink: Microservices
+Heartbeat/Connection
+Mission Protocol
+Parameter Protocol
+Camera Protocol
+Gimbal Protocol
+Battery Protocol
+Traffic Management
+Standard Flight Modes
+Time Synchronization
+Open Drone ID
+etc..
+
+MAVLink: Ground Stations
+
+
+SDK for MAVLink
+Because you writing XML is not meant for humans.
+Available for the most widely used programming languages:
+C++, Swift, Python, Java, Go, JS, CSharp, Rust
+Server / Client architecture
+Both can be embedded in the same library
+Server / Client communication is through gRPC
+Widely used and adopted by industry
+Top Features I like
+Plugin Architecture
+Events Interface
+Error Handling
+Shared Vehicle Control
+Multiple resources available: example code and tutorials
+MAVSDK
+Build, launch, and soar with Dronecode
+
+
+QGroundControl
+Ground Station that features a wide range of functionality from all aspects of vehicle control for setup and tuning, to mission based control. All of this thanks to MAVLink
+Can be deployed to multiple platforms: Linux, Windows, macOS, Android and iOS
+Vendors usually customize QGC for their end-users, allowing them to provide a fully featured Mission Control app.
+Can be themed, you can remove any unwanted functionality.
+Build, launch, and soar with Dronecode
+
+QGroundControl
+Open Source Mission Planner
+Fully themable interface
+Support for all MAVLink compliant flight stacks
+Vendor Neutral governance
+Permissively licensed: Apache 2.0
+Qt-based application
+Cross-platform: Mobile, Tablets, Linux, Windows, and macOS
+Can control every aspect of a drone, from firmware setup, to advanced mission planning
+
+
+QGroundControl
+Top Features I like
+Full setup and control of PX4 vehicles. (Also supports other MAVLink based platforms)
+Mission Planning for Autonomous Flight
+Flight Map with all telemetry, waypoints and vehicle instruments.
+3D Viewer
+Video Streaming
+Support for managing multiple Vehicles
+Multi-Platform
+
+
+PX4 Autopilot
+Open Source Autopilot Stack
+Developer friendly with vibrant community participation
+Support for a wide range of boards and sensors
+Vendor Neutral governance
+Business friendly license: BSD-3
+Modular architecture with a DDS-compatible middleware (uORB)
+Modules are fully parallelized, and thread safe
+Support for custom builds, trim what you don’t need
+RTOS
+Modules
+Telemetry
+Sensors
+Actuators
+Middleware
+MAVLink
+DDS / ROS 2
+
+Multi-Vehicle type support
+Multicopter
+Fixed Wing
+VTOL
+Rover
+Under Surface
+Above Surface
+Balloons
+Satellites
+Jetpack
+PX4 Autopilot
+Developer Friendly Interfaces
+Flight Modes provide a set of helpers to control autonomy
+Flight Tasks allowing developers to extend flight modes
+Parameter database exposing functionality back to users
+Events interface giving developers a system-wide API for notifications
+Control allocation translates thrust and torque commands into actuator commands which control motors and servos
+Controllers do not require special handling for airframe geometry
+Native ROS 2 Support through DDS
+
+Developer Friendly Interfaces
+Flight Modes provide a set of helpers to control autonomy
+Flight Tasks allowing developers to extend flight modes
+Parameter database exposing functionality back to users
+Events interface giving developers a system-wide API for notifications
+Control allocation translates thrust and torque commands into actuator commands which control motors and servos
+Controllers do not require special handling for airframe geometry
+Native ROS 2 Support through DDS
+PX4’s Stack Architecture
+
+PX4’s Stack Architecture
+System Storage:
+Database
+Parameters
+Logging
+Drivers:
+GPS
+Airspeed
+IMU
+Baro
+etc…
+External Interfaces:
+MAVLink
+XRCE-DDS for ROS 2
+
+PX4’s Stack Architecture
+State Machine
+Sensor Hub
+Autonomous Flight (Navigation)
+Position Controller
+Attitude & Rate Controller
+Control Allocation
+RC Handling
+
+The burden of such a generic platform falls upon our Parameter system. Parameters are stored in the filesystem. We have two types of parameters: Runtime and Boot time.
+Main Concepts
+Data types: float & int32_t
+You can export / import parameters
+YAML metadata & C/C++ API
+Everything can be configurable approach
+What works for us?
+We give developers the tools to allow their end users to configure aspects of their system
+Think of how to a pilot would define the takeoff altitude
+Really powerful when paired with a ground station
+Thanks to metadata we can build cool online reference lists
+Parameter based configuration
+
+
+Control Allocation (mixing)
+Control allocation in PX4 maps desired forces and torques from the controller into actuator outputs like motors or servos. It abstracts the vehicle geometry, so the same control logic works for multirotors, planes, or hybrids by handling the mixing and actuator mapping behind the scenes.
+
+
+Running realtime inside the Embedded Controller.
+Position: When the sticks are released the vehicle will remain locked to a position in 3D space.
+Altitude: When the sticks are released the vehicle will maintain current altitude.
+Hold: Vehicle stops and hovers at its current GPS position.
+Takeoff: Vehicle takes off to a specified height and waits further input.
+Land: Lands vehicle at the position where the mode was engaged.
+Mission: Starts a mission that was preloaded to the drone
+PX4’s *Internal* Flight Modes
+Modes can be Manual or Autonomous
+The API to create modes is “Flight Task”
+
+Controller diagrams, Multicopters
+
+What we like about uORB?
+Fast!
+DDS-like… compatible
+Offers a comprehensive way to build interfaces between modules/apps
+Priorities, rates, queues
+Messages are defined in .msg and generated at build time (.h / .cpp)
+NuttX Shell (NSH) Tooling
+ls /obj
+listener <message_name> <num_messages>
+uorb top
+uORB Middleware - Connecting apps!
+u(Micro) Object Request Broker
+It’s a really simple middleware, and arguably the top feature of PX4, at least in my opinion. It’s one of the first applications that launch on boot since most of PX4 depends on it.
+Main Concepts
+Messages - field information, typically reused by multiple topics
+Topics - what you subscribe and publish
+Modules - apps that depend on pub/sub of topics
+
+
+Thanks to uORB middleware we can communicate directly with the ROS 2 middleware (XRCE-DDS based)
+PX4 internal modules can share data with ROS 2 nodes
+Agent / Client approach
+Ethernet and Serial support
+ROS 2 QoS Supported!
+ROS 2 Support - DDS
+
+ROS 2 Support - Zenoh
+Direct uORB ↔ ROS 2 data exchange
+Uses Zenoh-pico client on PX4
+Connects via TCP, UDP, or UART (multicast supported)
+Works with rmw_zenoh 
+Topic mapping via SD card config
+Experimental but ready for testing
+
+ROS 2 Interface Library
+C++ library bridging ROS 2 with PX4
+Three high-level interfaces:
+Control → send set-points / actuate vehicle
+Navigation → feed pose / odometry
+Waypoint Missions → run full mission logic
+Enables ROS 2-native modes that register with PX4 and look like built-in modes.
+DDS ready
+Zenoh experimental
+
+External Flight Modes
+External Flight Modes are Flight Modes that can be developed and executed from outside the Flight Controller and in a non-real time system.
+When do External Flight Modes matter?
+When you don’t need low-level access for direct motor control
+When you have a compute module where you can run ROS 2
+When the mode is not Safety Critical
+Advantages
+You don’t need to deal with low level embedded constraints and requirements
+Crashing the app won’t result in a catastrophic failure
+Easier to maintain outside of the PX4 codebase
+Take advantage of high-level functionality like dynamic data structures, and the ROS 2 library ecosystem.
+More advanced compute for greater processing
+
+PX4 Simulation
+Gazebo is our default simulation agent, we support both classic and modern gazebo, with multiple worlds and models to choose from.
+
+Other Simulation Engines Supported
+Gazebo Classic
+AirSim
+Flight Gear
+jMAVSim
+Gazebo Simulation Docs
+
+PX4 Simulation
+Gazebo is our default simulation agent, we support both classic and modern gazebo, with multiple worlds and models to choose from.
+
+Other Simulation Engines Supported
+Gazebo Classic
+AirSim
+Flight Gear
+jMAVSim
+Gazebo Simulation Docs
+
+Supported Hardware Architectures
+Cortex-M4, Cortex-M7 & Cortex-M7 dual-core
+32 & 64 bit
+
+Supported RTOS
+(*Coming Soon)
+
+Support for more than 80 boards from 30+ manufacturers
+Drivers for more than 100+ sensors
+IMU, Baro, Actuators, GPS, INS, CAN, UWB… etc.
+Main Architectures Supported
+STM32 - STMicro
+Snapdragon - Qualcomm
+iMX - NXP Semiconductors
+RISCV-V 
+Hardware Support
+
+Official PX4 Developer Kits
+DroneBlocks
+$1,999.00
+Holybro
+$507.99
+ModalAI
+$2,749.99
+Build, launch, and soar with Dronecode
+
+Quick Break
+Coming Next: Developer Environment
+
+Aerial Robotics Meetup, tonight!
+Tonight, 8:00 to 11:00 PMCRAFT Beer Market, 1 Adelaide St E (short walk from the venue)Sponsored by Dronecode. Food and drinks are on us.
+Talk shop on control architectures, state estimation, and open source flight stacks with the people who actually maintain them.
+
+You've been stuck in a room with us all day, so come argue about EKFs over a beer tonight instead. 36 people are already in, space is limited
+
+Prerequisites  - environment setup - architecture overview
+In this section you will
+Understand the requirements for running the exercise
+Set up the simulation environment
+Fly a drone in Gazebo without ROS 2
+Attach ROS 2 to the simulation
+Echo PX4 topics in ROS 2
+Visualize PX4 data with Foxglove
+
+Environment Setup
+REQUIREMENTS:
+Install Foxglove https://foxglove.dev/download
+Download and install QGC https://qgroundcontrol.com
+Clone PX4 repo: https://docs.px4.io/main/en/sim_gazebo_gz/#installation-ubuntu-linux	git clone -b release/1.18 https://github.com/PX4/PX4-Autopilot.git
+Prepare workspace and clone workshop repo https://github.com/Dronecode/roscon-25-workshop : 	mkdir -p ~/workspaces/px4_roscon26_ws/src
+cd ~/workspaces/px4_roscon26_ws/src
+git clone git@github.com:Dronecode/roscon-25-workshop.git px4-roscon-workshop
+cd ~/workspaces/px4_roscon26_ws
+   		vcs import src < ./src/px4-roscon-workshop/jazzy.repos
+
+
+Environment Setup, dockerless, Ubuntu 22.04/24.04, WSL 2
+Follow PX4 simulation setup instructions https://docs.px4.io/main/en/sim_gazebo_gz/#installation-ubuntu-linuxTo setup PX4 SITL build toolchain and download Gazebo HarmonicVerify it by starting a simple simulation over Gazebo, no ROS 2 involved:	cd ~/PX4-Autopilot	make px4_sitl gz_x500
+Install ROS 2 (Jazzy or Humble depending on OS version)https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html. Pick ros-jazzy-desktophttps://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html. Pick ros-humble-desktop
+Install ROS 2 developer tools: sudo apt install ros-dev-tools
+Install dependencies:	cd ~/workspaces/px4_roscon26_ws
+source /opt/ros/jazzy/setup.bash # source /opt/ros/hummble/setup.bash
+rosdep install -i --from-paths src --skip-keys OpenCV
+
+
+Environment Setup, docker
+Retrieve px4io/px4-dev-ros2-gazebo:main-jazzy docker image or build it yourself https://github.com/PX4/PX4-Autopilot/pull/28730 
+Start the container	cd ~/workspaces/px4_roscon26_ws/src/px4-roscon-workshop	./docker/docker_run.sh ~/PX4-Autopilot
+Set HEADLESS=1 if you don’t want GUI to run
+To leverage GPU acceleration, if available, refer to https://docs.px4.io/main/en/simulation/gazebo_container_gui 
+From inside the container, install the workspace dependencies and build the workspace	apt update
+rosdep install -y -i --from-paths src --skip-keys OpenCV
+source /opt/ros/jazzy/setup.bash
+colcon build --symlink-install
+
+PX4 - ROS 2 interaction
+Use this slide to briefly explain again how PX4 and ROS 2 interacts regardless sim / real vehicle
+
+PX4 - ROS 2 interaction
+PX4-enabled FCU
+Companion Computer
+uart/udp
+Motors
+Sensors
+MicroXRCEAgent
+ROS 2
+ROS 2 node
+Now explain how it happens and where the different components are when operating on a real drone
+
+PX4 - ROS 2 interaction in Simulation
+Simulator host (posix)
+uart/udp
+MicroXRCEAgent
+ROS 2
+Your cool ROS 2 node
+GZ-transport
+General simulation scenario now. Where px4 runs? Where is the sensors data coming from? And the actuation?
+
+PX4 - ROS 2 interaction in Simulation
+ros_gz
+px4_msgs
+px4-ros2-interface-lib
+Micro-XRCE-DDS-Agent
+px4_roscon_workshop
+Offboard demo
+Custom mode demo
+Aruco marker detector
+Teloperation
+Precision landing
+Formation control
+Micro XRCE DDS
+ROS - GZ
+GZ-transport
+Finally, explain how this is packaged in a Docker image
+
+Starting Gazebo and PX4: make px4_sitl gz_{model}_{world}E.g. make px4_sitl gz_x500
+Flexible configuration: https://docs.px4.io/main/en/sim_gazebo_gz/#usage-configuration-options 
+Starting PX4 and gazebo from ros: px4_roscon_workshop/launch/px4.launch.py
+PX4 - Gz Simulation startup
+References:
+https://github.com/PX4/PX4-gazebo-models
+https://docs.px4.io/main/en/sim_gazebo_gz/ 
+
+Linking Gazebo and PX4 to ROS 2
+GZ => ROS 2 connection
+PX4 <=> ROS 2 connection
+Inspecting PX4 topics from ROS 2
+Getting TF data from PX4
+Running Foxglove bridge
+MicroXRCEAgent udp4 -p 8888
+ros2 run ros_gz_bridge parameter_bridge /clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock
+ros2 topic listros2 topic echo /fmu/out/vehicle_status_v1
+ros2 run px4_tf px4_tf_publisher --ros-args -p use_sim_time:=true
+ros2 run foxglove_bridge foxglove_bridge --ros-args -p use_sim_time:=true
+
+Prerequisites  - environment setup - architecture overview
+Now you know how
+Set up the simulation environment
+Fly a drone in Gazebo without ROS 2
+Attach ROS 2 to the simulation
+Echo PX4 topics in ROS 2
+Visualize PX4 data with Foxglove
+
+Quick Break
+Coming Next: Control Pipelines
+
+Aerial Robotics Meetup, tonight!
+Tonight, 8:00 to 11:00 PMCRAFT Beer Market, 1 Adelaide St E (short walk from the venue)Sponsored by Dronecode. Food and drinks are on us.
+Talk shop on control architectures, state estimation, and open source flight stacks with the people who actually maintain them.
+
+You've been stuck in a room with us all day, so come argue about EKFs over a beer tonight instead. 36 people are already in, space is limited
+
+Understanding how high-level control can be moved from the flight controller (PX4) to the onboard computer (ROS 2).
+Exploring how PX4 and ROS 2 share responsibilities for stability, autonomy, and perception-driven behavior.
+Learning when and why to let ROS 2 take over command generation while PX4 ensures real-time safety and actuator control.
+Why take control from the flight controller:
+To implement custom autonomy, AI, or perception-based navigation.
+To integrate external sensor data (LiDAR, cameras, etc.) not directly handled by PX4.
+To test new control strategies without flashing or modifying flight firmware.
+To coordinate multi-robot systems from a common ROS 2 framework.
+Control Pipelines (Patrik)
+
+Taking Control of the Flight Controller
+Why do we want to do that?
+Enable autonomous behavior and custom logic
+Integrate with ROS 2 nodes for perception & planning
+Test new control strategies safely in simulation
+Go beyond built-in flight modes
+
+Risks involved
+Loss of failsafe protections
+Unstable flight if setpoints are wrong or too slow
+Direct control = direct responsibility
+Always test in SITL first
+
+
+How Can We Take Control Using ROS 2?
+Offboard Mode — the classic approach
+Built around MAVLink, not ROS 2
+Works in C++ or Python
+Great for quick testing
+Old method — not ROS 2-native
+https://docs.px4.io/main/en/ros2/offboard_control.html
+
+
+PX4 ROS 2 Interface (External Modes)
+Uses px4_ros2::ModeBase → direct PX4–ROS 2 bridge
+C++, requires more experience (Python binders are available)
+Supports complex behaviors and autonomy logic
+Integrates PX4 safety + lifecycle hooks
+Modern, flexible, ROS 2-native control
+https://docs.px4.io/main/en/ros2/px4_ros2_control_interface.html
+
+
+What's New
+Python bindings — prototype modes in Python, not just C++ (great for teaching, rapid iteration) (verify exact package/API name on your slide)
+Rover & VTOL support — setpoint types beyond multicopter
+Direct actuator control — DirectActuatorsSetpointType and PeripheralActuatorControls for motors, servos, and payload actuators
+Same registration/lifecycle model across all of the above
+https://docs.px4.io/main/en/ros2/px4_ros2_control_interface
+
+
+What's New
+Let’s try the Python example
+examples/python/modes/goto/example_mode_goto_pyros2 run example_mode_goto_py gotoLet’s try the rover teleop example
+ros2 launch rover_teleop rover_launch.py
+ros2 run teleop_twist_keyboard teleop_twist_keyboard
+
+
+
+
+Custom Modes: Mode vs Mode Executor
+Mode (px4_ros2::ModeBase)
+Defines how the vehicle behaves during a custom flight mode.
+Inherits from px4_ros2::ModeBase
+Implements:
+onActivate() / onDeactivate()
+updateSetpoint() → generates control setpoints
+Uses PX4 objects (e.g. ManualControlInput, RatesSetpointType)
+Registered with mode->doRegister()
+Focus: control logic, what the drone does right now
+Think of this as the “brain” for a single flight mode.
+
+Mode Executor (px4_ros2::ModeExecutorBase)
+Coordinates multiple modes or actions into a higher-level behavior.
+Inherits from px4_ros2::ModeExecutorBase
+Owns one Mode (MyMode)
+Defines states → e.g. TakingOff → MyMode → RTL
+Uses helper actions: takeoff(), scheduleMode(), rtl()
+Registered via executor->doRegister()
+Focus: mission flow, when and in what order things happen
+Think of this as the “mission director” controlling the brains.
+
+Concept
+Purpose
+Example
+Mode
+Implements a specific behavior
+Manual, Teleop, Offboard-like
+ModeExecutor
+Sequences modes/actions
+Takeoff → Custom → Land
+
+Custom Mode example
+Node setup
+Uses NodeWithModeExecutor<CustomModeExecutor, CustomWaypoints, CustomYaw>
+Launches a ROS 2 node with two custom modes and one executor
+Custom Modes
+CustomWaypoints
+Generates and publishes position setpoints
+Drone moves through a list of waypoints
+Calls completed() when all waypoints reached
+CustomYaw
+Commands slow yaw rotation setpoints
+Tracks total rotation angle
+Finishes after one full 360° turn
+
+Mode Executor
+Implements a small state machine:Takeoff → CustomWaypoints → CustomYaw → Land → WaitUntilDisarmed
+Calls high-level actions (takeoff(), land(), waitUntilDisarmed())
+Uses scheduleMode() to run each custom mode in sequence
+Control Flow
+Each step triggers a callback when done
+On success → moves to the next state
+Logs status at each transition
+Takeaway
+Combines multiple ROS 2-native modes into one autonomous flow
+Clean separation:
+Modes → what to do
+Executor → when to do it
+No MAVLink commands needed directly
+Robust, modular, and fully extensible for new behaviors
+
+
+
+Custom Mode Video
+
+Custom mode exercises
+GOTO/Trajectory Setpoint replacement
+Explore what happens if you want to change the Mode order
+Problems
+
+ Break (30 min)
+Coming Next: Mode Executors and Multi-Vehicle Control
+
+VTOL = two regimes in one airframe: multicopter (MC) hover and fixed-wing (FW) cruise, plus the transitions between them
+Pick setpoint types — MC setpoints in hover, forward-flight setpoints in cruise; don't reuse an MC-only type in FW 
+MC takeoff → transition to FW → cruise / run custom FW mode → transition back to MC → land
+Mode Executors
+
+Custom Modes: Mode vs Mode Executor
+Mode (px4_ros2::ModeBase)
+Defines how the vehicle behaves during a custom flight mode.
+Inherits from px4_ros2::ModeBase
+Implements:
+onActivate() / onDeactivate()
+updateSetpoint() → generates control setpoints
+Uses PX4 objects (e.g. ManualControlInput, RatesSetpointType)
+Registered with mode->doRegister()
+Focus: control logic, what the drone does right now
+Think of this as the “brain” for a single flight mode.
+
+Mode Executor (px4_ros2::ModeExecutorBase)
+Coordinates multiple modes or actions into a higher-level behavior.
+Inherits from px4_ros2::ModeExecutorBase
+Owns one Mode (MyMode)
+Defines states → e.g. TakingOff → MyMode → RTL
+Uses helper actions: takeoff(), scheduleMode(), rtl()
+Registered via executor->doRegister()
+Focus: mission flow, when and in what order things happen
+Think of this as the “mission director” controlling the brains.
+
+Concept
+Purpose
+Example
+Mode
+Implements a specific behavior
+Manual, Teleop, Offboard-like
+ModeExecutor
+Sequences modes/actions
+Takeoff → Custom → Land
+
+VTOL executor exercise
+Change land to RTL
+Problems
+workspaces/px4_roscon26_ws/src/px4-roscon-workshop/px4_roscon_workshop/vtol_executor
+
+VTOL executor video
+
+Quick video - MC mode executor
+
+Each PX4 instance runs its own uXRCE-DDS client with a unique instance ID / topic namespace; one agent bridges them all into the ROS 2 graph
+Run one executor node per vehicle, scoped to that vehicle's ROS 2 namespace (e.g. /px4_1, /px4_2) — the library binds to the matching instance
+Add a coordinator/orchestrator node above the executors for fleet logic: task allocation, formation, synchronized takeoff, deconfliction
+Executors handle per-vehicle safety and sequencing; the orchestrator handles inter-vehicle decisions — clean separation of concerns
+SITL: launch N PX4 instances with distinct instance IDs + DDS namespaces; all appear in QGC and Gazebo together
+Multi-Vehicle Control (Patrik & Beniamino)
+
+
+VIDEO
+
+Multi-Vehicle Control exercise
+Formation Control: make it an executor that auto takes off and then transit to formation control (this could actually be how we present formation control).
+Problem
+workspaces/px4_roscon26_ws/src/px4-roscon-workshop/px4_roscon_workshop/formation_control
+
+Lunch Break (60 min)
+Coming Next: Perception & Applications
+
+Aerial Robotics Meetup, tonight!
+Tonight, 8:00 to 11:00 PMCRAFT Beer Market, 1 Adelaide St E (short walk from the venue)Sponsored by Dronecode. Food and drinks are on us.
+Talk shop on control architectures, state estimation, and open source flight stacks with the people who actually maintain them.
+
+You've been stuck in a room with us all day, so come argue about EKFs over a beer tonight instead. 36 people are already in, space is limited
+
+Application Example: Search And Rescue (SAR) modes
+Scenario
+SAR swarm: a rover is the active rescuer, drones extend its "instruments and perspective."
+V-Sweep = wide aerial scan while it moves
+Orbital = 360° when it stops to investigate
+Didactic example only, not a search-and-rescue readiness demo
+V-Sweep
+Orbital
+
+SAR modes architecture + SAR executor (Auto)
+Solid = inherits & Dashed = executor schedules (holds references, not a subclass)
+
+SAR Modes vs Formation Control
+SAR Modes
+Target relative: every drone tracks one external target (rover)
+Reads a single rover pose (/rover/pose)
+Formation: V-Sweep wedge or Orbital circle
+No inter-drone awareness (yet)
+Formation Control
+Peer-to-peer: every drone tracks its neighbors
+Reads TF transforms between vehicles
+Formation: Fixed
+Spring-based separation controller
+Shared infrastructure, different brain
+
+Quick Video
+
+Exercises
+sar_modes:
+Verify the formation actually  re-arranges when you flip modes manually in QGC
+Build a third SAR mode of your own
+sar_auto_executor:
+Verify in SAR (Auto) that QGC switches on its own as the rover moves, with the console open alongside to watch the executor’s state transitions
+Build either a take-off step for the executor, or take-off plus a state driven by rover’s behavior (e.g. stays still for t seconds)
+
+Gimbal control
+Three axis gimbal system
+yaw -> roll -> pitch
+Simulated in gazebo by the vtol_gimbal model
+Low level controlled in PX4 SITL by the gz_bridge
+Supports MAVLink Gimbal V2 protocol
+Support direct control over gimbal_controls uorb topic
+We will control the gimbal from ROS 2 directly publishing on /fmu/in/gimbal_controls
+
+Perception & Applications
+Build a perception pipeline for ArUco marker landing and LiDAR mapping
+Demo vision-guided precision landing
+Architecture diagrams and code snippets
+
+
+Aruco Marker detection
+What is an ArUco Marker?
+A binary square fiducial marker used for camera pose estimation.
+Encodes a unique ID that can be easily detected in images.
+Used to determine position and orientation of objects relative to a camera.
+Why Use ArUco Markers
+Fast and lightweight — works in real time on CPUs.
+Highly reliable under varied lighting and partial occlusion.
+No training data required, unlike AI-based object detection.
+Deterministic performance — consistent and easy to debug.
+
+
+Why OpenCV (vs. AI)
+Open-source and widely supported in ROS and C++.
+Low computational cost — ideal for embedded and robotics systems.
+Easy integration with camera calibration and PnP solvers.
+Predictable results without needing neural network inference.
+3D Coordinate Frame Visualization
+The 3D axes (X, Y, Z) show the marker’s orientation in space.
+Allows intuitive visualization of camera–marker geometry.
+Essential for pose estimation, control, and navigation tasks.
+Helps debug spatial alignment in simulation and real-world setups.
+
+
+
+Aruco Marker detection
+Step
+Description
+Output
+Image Acquisition
+Subscribes to /camera and /camera_info
+Raw RGB + calibration data
+Marker Detection
+Detects marker corners and IDs using OpenCV ArUco.
+Marker corner pixel coords
+Undistortion
+Corrects corner coordinates using camera intrinsics.
+Undistorted 2D points
+Pose Estimation
+Solves PnP to get marker position and orientation.
+tvec, rvec
+Pose Conversion
+Converts rotation to quaternion for ROS compatibility.
+PoseStamped message
+Annotation & Publish
+Draws axes, overlays text, publishes processed image and target pose.
+/image_proc, /target_pose
+
+Aruco Marker exercise
+Implement a ROS 2 subscription that verifies the size of a detected ArUco marker using the distance measured by a rangefinder.
+In this exercise, we estimate the real-world size of a detected ArUco marker using only the camera image, its intrinsic parameters, and the vehicle's measured altitude. Show this estimated marker size on the annotated image.
+Hint: https://docs.px4.io/main/en/msg_docs/VehicleLocalPosition
+
+
+
+
+Quick video
+
+Teleoperation & Lidar Scanning
+Teleoperation Overview
+Direct control of the drone via joystick or keyboard (Twist commands).
+Integration with PX4 through ROS 2 topics (/cmd_vel → PX4 setpoints).
+Supports manual navigation in indoor/outdoor environments.
+Enables real-time response to operator inputs.
+Can be combined with autonomous routines for hybrid control.
+
+
+LiDAR Scanning Overview
+Collects high-resolution 3D point cloud data of the environment.
+Provides obstacle detection and mapping capabilities.
+Uses ROS 2 sensor messages (sensor_msgs::PointCloud2) for integration.
+Supports real-time visualization in tools like RViz or Foxglove Studio.
+Useful for mapping, inspection, and SLAM experiments.
+
+
+
+Teleoperation & Lidar Scanning
+
+Mode with Executor
+Takeoff state->TeleOperation->Land
+Teleoperation
+Teleop_twist_keyboard
+ENU/NED conversion
+Holonomic control
+Lidar Scan
+2d laserscan is mounted on the drone
+Live visualization on Foxglove
+
+
+Teleoperation & Lidar Scanning exercise
+Navigate the drone to the target in Foxglove using teleoperation. Do not use the Gazebo simulation—rely solely on the LiDAR (laser scan) data for guidance.
+Hint: Observe and record a few key waypoints along the path; these will be useful for a subsequent exercise. https://docs.px4.io/main/en/msg_docs/VehicleLocalPosition
+
+
+
+
+Quick video
+
+Precision Land - Mode
+The drone must convert target measurements from the camera’s frame (optical) to the drone’s local NED (North-East-Down) frame.
+Transform Steps in Code:
+Convert Aruco tag pose from optical frame to NED frame using a rotation matrix.
+Transform tag position relative to the drone body frame.
+Transform to world frame by combining drone position & orientation (affine transform).
+Precision landing is the process of autonomously guiding a drone to land at a specific target (e.g., a marker or pad) with high accuracy, using onboard sensors (like cameras or LiDAR) to detect and track the target.
+Key Features in this Implementation:
+Uses Aruco markers as landing targets.
+Performs spiral search pattern if the target is not immediately visible.
+Maintains approach altitude, then descends once target is acquired.
+XY motion uses a velocity controller with proportional–integral (PI) gains.
+Uses land detection feedback to confirm landing success.
+
+
+Quick video
+
+px4_roscon_workshop/precision_land/landing_on_moving_target.md
+Precision Land on moving target
+
+Quick Break
+Coming Next: Precision Landing
+
+Aerial Robotics Meetup, tonight!
+Tonight, 8:00 to 11:00 PMCRAFT Beer Market, 1 Adelaide St E (short walk from the venue)Sponsored by Dronecode. Food and drinks are on us.
+Talk shop on control architectures, state estimation, and open source flight stacks with the people who actually maintain them.
+
+You've been stuck in a room with us all day, so come argue about EKFs over a beer tonight instead. 36 people are already in, space is limited
+
+Teleoperation & Precision Land Exercise
+Integrate all the concepts from today. Create a ROS2 package with a Mode Executor for Precision Landing and perform a precision landing in the maze we explored, using teleoperation. Incorporate the custom waypoints you recorded along the way (Create a CustomWaypoints Mode).
+Hint: You can start by copying the Custom Mode package. Replace CustomYaw with PrecisionLand and add the waypoints you collected earlier.
+
+
+
+
+
+Quick video
+
+Quick Break
+Coming Next: 
+SIM 2 Real, Q&A Resources & Show and Tell
+
+Aerial Robotics Meetup, tonight!
+Tonight, 8:00 to 11:00 PMCRAFT Beer Market, 1 Adelaide St E (short walk from the venue)Sponsored by Dronecode. Food and drinks are on us.
+Talk shop on control architectures, state estimation, and open source flight stacks with the people who actually maintain them.
+
+You've been stuck in a room with us all day, so come argue about EKFs over a beer tonight instead. 36 people are already in, space is limited
+
+From simulation to real vehicles: Safety First
+Prop guards (indoor in particular)
+Geofence
+Extensive pre-flight checklist
+Always inspect the vehicle
+Configure the failsafes
+
+SIM vs REAL
+SIM
+Timing is of relative importance
+ROS 2 nodes run on high performance hosts
+No startup issues
+No PX4-ROS 2 comms issues
+MAVLink always available
+REAL
+Timing is of GREAT importance
+ROS 2 nodes run on low/mid performance hosts
+Startup can be critical
+PX4-ROS 2 comms over serial can cause bandwidth issues
+MAVLink might not be available
+
+Hardware Architecture
+PX4 enabled flight controller  +  Companion computer
+All in same chip
+All in same package
+Splitted architectures
+
+PX4 - ROS 2 transport layer selection
+SERIAL
+UDP
+Support zenoh
+NO
+YES
+Price
+Cheaper
+More expensive
+Bandwidth
+Limited
+YES
+MAVLink
+Requires second serial
+Included
+Isolation
+Intrinsic
+Depends on network
+
+Q&A, Resources & Hardware Show-and-Tell
+Open discussion and troubleshooting tips
+Review of key resources (links provided)
+Demo table with flight controllers, companion computers, and sensors
+
+Open Lab & Individual Consultations
+One-on-one help with exercises
+Lightning talk
+
+
+Resources
+Community
+Meetings (dev call)
+Discord
+Forums
+Github (PX4, Dronecode, MAVLink, Pixhawk)
+Website
+Youtube
+Social media (linkedin, x)
+
+Kahoot
+
+Aerial Robotics Meetup, tonight!
+Tonight, 8:00 to 11:00 PMCRAFT Beer Market, 1 Adelaide St E (short walk from the venue)Sponsored by Dronecode. Food and drinks are on us.
+Talk shop on control architectures, state estimation, and open source flight stacks with the people who actually maintain them.
+
+You've been stuck in a room with us all day, so come argue about EKFs over a beer tonight instead. 36 people are already in, space is limited

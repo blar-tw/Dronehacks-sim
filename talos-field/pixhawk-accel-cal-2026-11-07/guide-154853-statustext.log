@@ -1,0 +1,114 @@
+15:48:53 STATUSTEXT 6 GCS connection regained	
+15:48:58 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:50:01 STATUSTEXT 6 [cal] calibration started: 2 accel
+15:50:01 STATUSTEXT 6 [cal] pending: back front left right up down
+15:50:01 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:50:04 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:50:05 STATUSTEXT 6 [cal] down orientation detected
+15:50:05 STATUSTEXT 6 [cal] down orientation detected
+15:50:05 STATUSTEXT 6 [cal] Hold still, measuring down side
+15:50:06 STATUSTEXT 6 [cal] down side result: [0.118 0.131 -9.963]
+15:50:06 STATUSTEXT 6 [cal] progress <17>
+15:50:06 STATUSTEXT 6 [cal] down side done, rotate to a different side
+15:50:06 STATUSTEXT 6 [cal] down side done, rotate to a different side
+15:50:06 STATUSTEXT 6 [cal] pending: back front left right up
+15:50:06 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:50:09 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:50:11 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:50:11 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:50:13 STATUSTEXT 6 [cal] up orientation detected
+15:50:13 STATUSTEXT 6 [cal] up orientation detected
+15:50:13 STATUSTEXT 6 [cal] Hold still, measuring up side
+15:50:14 STATUSTEXT 6 [cal] up side result: [0.661 0.143 9.763]
+15:50:14 STATUSTEXT 6 [cal] progress <34>
+15:50:14 STATUSTEXT 6 [cal] up side done, rotate to a different side
+15:50:14 STATUSTEXT 6 [cal] up side done, rotate to a different side
+15:50:14 STATUSTEXT 2 [cal] calibration cancelled
+15:50:14 STATUSTEXT 2 [cal] calibration failed: accel
+15:50:16 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:50:18 STATUSTEXT 6 [cal] calibration started: 2 accel
+15:50:18 STATUSTEXT 6 [cal] pending: back front left right up down
+15:50:18 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:50:20 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:50:22 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:50:22 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:50:24 STATUSTEXT 6 [cal] down orientation detected
+15:50:24 STATUSTEXT 6 [cal] down orientation detected
+15:50:24 STATUSTEXT 6 [cal] Hold still, measuring down side
+15:50:25 STATUSTEXT 6 [cal] down side result: [0.163 0.006 -9.962]
+15:50:25 STATUSTEXT 6 [cal] progress <17>
+15:50:25 STATUSTEXT 6 [cal] down side done, rotate to a different side
+15:50:25 STATUSTEXT 6 [cal] down side done, rotate to a different side
+15:50:25 STATUSTEXT 6 [cal] pending: back front left right up
+15:50:25 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:50:28 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:50:33 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:50:34 STATUSTEXT 6 [cal] up orientation detected
+15:50:34 STATUSTEXT 6 [cal] up orientation detected
+15:50:34 STATUSTEXT 6 [cal] Hold still, measuring up side
+15:50:35 STATUSTEXT 6 [cal] up side result: [-0.310 0.133 9.765]
+15:50:35 STATUSTEXT 6 [cal] progress <34>
+15:50:35 STATUSTEXT 6 [cal] up side done, rotate to a different side
+15:50:36 STATUSTEXT 6 [cal] up side done, rotate to a different side
+15:50:36 STATUSTEXT 6 [cal] pending: back front left right
+15:50:36 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:50:38 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:50:39 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:50:39 STATUSTEXT 6 [cal] up side already completed
+15:50:39 STATUSTEXT 6 [cal] pending: back front left right
+15:50:39 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:50:42 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:50:43 STATUSTEXT 6 [cal] up side already completed
+15:50:43 STATUSTEXT 6 [cal] pending: back front left right
+15:50:43 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:50:46 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:50:47 STATUSTEXT 6 [cal] up side already completed
+15:50:47 STATUSTEXT 6 [cal] pending: back front left right
+15:50:47 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:50:49 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:50:49 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:50:50 STATUSTEXT 6 [cal] detected motion, hold still...
+15:50:53 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:50:53 STATUSTEXT 2 Preflight Fail: Attitude failure (pitch)
+15:50:56 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:50:56 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:50:56 STATUSTEXT 2 Preflight Fail: Attitude failure (pitch)
+15:50:57 STATUSTEXT 6 [cal] detected motion, hold still...
+15:50:58 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:50:58 STATUSTEXT 2 Preflight Fail: Attitude failure (pitch)
+15:50:58 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:50:59 STATUSTEXT 6 [cal] front orientation detected
+15:50:59 STATUSTEXT 6 [cal] front orientation detected
+15:50:59 STATUSTEXT 6 [cal] Hold still, measuring front side
+15:51:00 STATUSTEXT 2 Preflight Fail: Attitude failure (pitch)
+15:51:00 STATUSTEXT 6 [cal] front side result: [-9.848 0.128 0.042]
+15:51:00 STATUSTEXT 6 [cal] progress <51>
+15:51:00 STATUSTEXT 6 [cal] front side done, rotate to a different side
+15:51:01 STATUSTEXT 6 [cal] front side done, rotate to a different side
+15:51:01 STATUSTEXT 6 [cal] pending: back left right
+15:51:01 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:51:02 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:51:02 STATUSTEXT 2 Preflight Fail: Attitude failure (pitch)
+15:51:03 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:51:03 STATUSTEXT 6 [cal] detected motion, hold still...
+15:51:04 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:51:06 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:51:07 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:51:08 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:51:08 STATUSTEXT 2 Preflight Fail: Attitude failure (pitch)
+15:51:09 STATUSTEXT 6 [cal] back orientation detected
+15:51:09 STATUSTEXT 6 [cal] back orientation detected
+15:51:09 STATUSTEXT 6 [cal] Hold still, measuring back side
+15:51:10 STATUSTEXT 6 [cal] back side result: [9.844 -0.118 -0.153]
+15:51:10 STATUSTEXT 6 [cal] progress <68>
+15:51:10 STATUSTEXT 6 [cal] back side done, rotate to a different side
+15:51:10 STATUSTEXT 6 [cal] back side done, rotate to a different side
+15:51:10 STATUSTEXT 6 [cal] pending: left right
+15:51:10 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:51:12 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:51:14 STATUSTEXT 6 [cal] back side already completed
+15:51:14 STATUSTEXT 6 [cal] pending: left right
+15:51:14 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:51:16 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:51:36 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:51:36 STATUSTEXT 6 [cal] detected motion, hold still...

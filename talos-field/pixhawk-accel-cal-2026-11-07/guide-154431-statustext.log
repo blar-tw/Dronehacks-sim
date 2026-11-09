@@ -1,0 +1,40 @@
+15:44:31 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:44:31 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:44:31 STATUSTEXT 6 Connection to ground station lost	
+15:44:31 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:44:32 STATUSTEXT 6 GCS connection regained	
+15:44:33 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:44:35 STATUSTEXT 6 [cal] calibration started: 2 accel
+15:44:35 STATUSTEXT 6 [cal] pending: back front left right up down
+15:44:35 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:44:39 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:44:43 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:44:44 STATUSTEXT 6 [cal] down orientation detected
+15:44:44 STATUSTEXT 6 [cal] down orientation detected
+15:44:44 STATUSTEXT 6 [cal] Hold still, measuring down side
+15:44:45 STATUSTEXT 6 [cal] down side result: [0.018 0.088 -9.960]
+15:44:45 STATUSTEXT 6 [cal] progress <17>
+15:44:45 STATUSTEXT 6 [cal] down side done, rotate to a different side
+15:44:45 STATUSTEXT 6 [cal] down side done, rotate to a different side
+15:44:46 STATUSTEXT 6 [cal] pending: back front left right up
+15:44:46 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:44:48 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:44:49 STATUSTEXT 6 [cal] down side already completed
+15:44:49 STATUSTEXT 6 [cal] pending: back front left right up
+15:44:49 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:44:52 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:44:53 STATUSTEXT 6 [cal] down side already completed
+15:44:53 STATUSTEXT 6 [cal] pending: back front left right up
+15:44:53 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:44:56 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:44:57 STATUSTEXT 6 [cal] down side already completed
+15:44:57 STATUSTEXT 6 [cal] pending: back front left right up
+15:44:57 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:44:59 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:45:01 STATUSTEXT 6 [cal] down side already completed
+15:45:01 STATUSTEXT 6 [cal] pending: back front left right up
+15:45:01 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:45:03 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:45:04 STATUSTEXT 6 [cal] down side already completed
+15:45:04 STATUSTEXT 2 [cal] calibration failed: timeout: no motion
+15:45:04 STATUSTEXT 2 [cal] calibration failed: accel
