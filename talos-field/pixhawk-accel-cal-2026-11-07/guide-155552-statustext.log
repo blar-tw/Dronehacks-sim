@@ -1,0 +1,42 @@
+15:56:09 STATUSTEXT 6 [cal] calibration started: 2 accel
+15:56:09 STATUSTEXT 6 [cal] pending: back front left right up down
+15:56:09 STATUSTEXT 6 [cal] hold vehicle still on a pending side
+15:56:10 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:56:12 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:56:14 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:56:18 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:56:18 STATUSTEXT 6 [cal] detected motion, hold still...
+15:56:27 STATUSTEXT 6 [cal] detected rest position, hold still...
+15:56:29 STATUSTEXT 6 [cal] right orientation detected
+15:56:29 STATUSTEXT 6 [cal] right orientation detected
+15:56:29 STATUSTEXT 6 [cal] Hold still, measuring right side
+15:56:30 STATUSTEXT 6 [cal] right side result: [1.018 -9.836 -0.117]
+15:56:30 STATUSTEXT 6 [cal] progress <17>
+15:56:30 STATUSTEXT 6 [cal] right side done, rotate to a different side
+15:56:30 STATUSTEXT 6 [cal] right side done, rotate to a different side
+15:56:30 STATUSTEXT 2 [cal] calibration cancelled
+15:56:30 STATUSTEXT 2 [cal] calibration failed: accel
+15:56:43 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:56:45 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:56:47 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:56:49 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:57:07 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:57:16 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:57:18 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:57:20 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:57:30 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:57:37 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:57:37 STATUSTEXT 2 Preflight Fail: Attitude failure (pitch)
+15:57:39 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:57:39 STATUSTEXT 2 Preflight Fail: Attitude failure (pitch)
+15:57:41 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:57:41 STATUSTEXT 2 Preflight Fail: Attitude failure (pitch)
+15:57:52 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:57:54 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:57:56 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:57:56 STATUSTEXT 2 Preflight Fail: Attitude failure (pitch)
+15:58:16 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:59:45 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+15:59:47 STATUSTEXT 2 Preflight Fail: heading estimate not stable
+15:59:50 STATUSTEXT 2 Preflight Fail: horizontal position unstable
+16:00:44 STATUSTEXT 2 Preflight Fail: heading estimate not stable

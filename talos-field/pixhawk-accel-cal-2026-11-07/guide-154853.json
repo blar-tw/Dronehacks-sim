@@ -1,0 +1,1164 @@
+{
+  "mode": "guide",
+  "started": 1794095335.51152,
+  "uid": 3473490359910740788,
+  "limits": {
+    "ok_deg": 2.0,
+    "cancel_deg": 3.0,
+    "tol_pct": 0.5
+  },
+  "params_before": {
+    "CAL_ACC0_ID": {
+      "value": 9.734576605731712e-39,
+      "hex": "0a006a00",
+      "type": 6
+    },
+    "CAL_ACC1_ID": {
+      "value": 3.489762866988309e-39,
+      "hex": "0a002600",
+      "type": 6
+    },
+    "CAL_ACC0_XOFF": {
+      "value": 0.0012771934270858765,
+      "hex": "8067a73a",
+      "type": 9
+    },
+    "CAL_ACC0_YOFF": {
+      "value": 0.001145884394645691,
+      "hex": "8031963a",
+      "type": 9
+    },
+    "CAL_ACC0_ZOFF": {
+      "value": 0.06560230255126953,
+      "hex": "805a863d",
+      "type": 9
+    },
+    "CAL_ACC0_XSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC0_YSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC0_ZSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC1_XOFF": {
+      "value": -0.0010569021105766296,
+      "hex": "c0878aba",
+      "type": 9
+    },
+    "CAL_ACC1_YOFF": {
+      "value": -0.0032822489738464355,
+      "hex": "001b57bb",
+      "type": 9
+    },
+    "CAL_ACC1_ZOFF": {
+      "value": -0.19159412384033203,
+      "hex": "403144be",
+      "type": 9
+    },
+    "CAL_ACC1_XSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC1_YSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC1_ZSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    }
+  },
+  "attempt_count": 2,
+  "calibration": {
+    "attempt": 2,
+    "sides": {
+      "down": {
+        "px4_reported": [
+          0.163,
+          0.006,
+          -9.962
+        ],
+        "SCALED_IMU": {
+          "mean": [
+            0.1569064,
+            0.005230213333333333,
+            -9.897960807777777
+          ],
+          "n": 45,
+          "tilt_deg": 0.9087036781499096
+        },
+        "SCALED_IMU2": {
+          "mean": [
+            -0.0008717022222222222,
+            0.00980665,
+            -9.944596876666667
+          ],
+          "n": 45,
+          "tilt_deg": 0.056723754902685636
+        },
+        "px4_tilt_deg": 0.9380347386197441,
+        "worst_tilt_deg": 0.9380347386197441
+      },
+      "up": {
+        "px4_reported": [
+          -0.31,
+          0.133,
+          9.765
+        ],
+        "SCALED_IMU": {
+          "mean": [
+            -0.3065644065217391,
+            0.1264205097826087,
+            9.824131419565218
+          ],
+          "n": 46,
+          "tilt_deg": 1.9332527633888248
+        },
+        "SCALED_IMU2": {
+          "mean": [
+            -0.22555294999999997,
+            0.12002486847826087,
+            9.634607248913042
+          ],
+          "n": 46,
+          "tilt_deg": 1.519068137604725
+        },
+        "px4_tilt_deg": 1.978462687282607,
+        "worst_tilt_deg": 1.978462687282607
+      },
+      "front": {
+        "px4_reported": [
+          -9.848,
+          0.128,
+          0.042
+        ],
+        "SCALED_IMU": {
+          "mean": [
+            -9.849074420652173,
+            0.12428862934782607,
+            0.10360938913043478
+          ],
+          "n": 46,
+          "tilt_deg": 0.9412267723336533
+        },
+        "SCALED_IMU2": {
+          "mean": [
+            -9.814751145652172,
+            0.23088265108695652,
+            0.06651466956521739
+          ],
+          "n": 46,
+          "tilt_deg": 1.402365255174641
+        },
+        "px4_tilt_deg": 0.7837217342009863,
+        "worst_tilt_deg": 1.402365255174641
+      },
+      "back": {
+        "px4_reported": [
+          9.844,
+          -0.118,
+          -0.153
+        ],
+        "SCALED_IMU": {
+          "mean": [
+            9.840304639772727,
+            -0.11188496136363636,
+            -0.08491667386363635
+          ],
+          "n": 44,
+          "tilt_deg": 0.8177830030421319
+        },
+        "SCALED_IMU2": {
+          "mean": [
+            9.797957742045453,
+            -0.2337994511363636,
+            -0.2478407909090909
+          ],
+          "n": 44,
+          "tilt_deg": 1.9916102422344235
+        },
+        "px4_tilt_deg": 1.1244540429606003,
+        "worst_tilt_deg": 1.9916102422344235
+      }
+    },
+    "statustext": [
+      [
+        1794095418.1543748,
+        "[cal] calibration started: 2 accel"
+      ],
+      [
+        1794095418.205614,
+        "[cal] pending: back front left right up down"
+      ],
+      [
+        1794095418.255988,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095420.18679,
+        "Preflight Fail: horizontal position unstable"
+      ],
+      [
+        1794095422.3212721,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095422.829835,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095424.102015,
+        "[cal] down orientation detected"
+      ],
+      [
+        1794095424.152736,
+        "[cal] down orientation detected"
+      ],
+      [
+        1794095424.203632,
+        "[cal] Hold still, measuring down side"
+      ],
+      [
+        1794095425.118931,
+        "[cal] down side result: [0.163 0.006 -9.962]"
+      ],
+      [
+        1794095425.171115,
+        "[cal] progress <17>"
+      ],
+      [
+        1794095425.2218182,
+        "[cal] down side done, rotate to a different side"
+      ],
+      [
+        1794095425.2755232,
+        "[cal] down side done, rotate to a different side"
+      ],
+      [
+        1794095425.428673,
+        "[cal] pending: back front left right up"
+      ],
+      [
+        1794095425.4796958,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095428.681601,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095433.610153,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095434.882609,
+        "[cal] up orientation detected"
+      ],
+      [
+        1794095434.9341922,
+        "[cal] up orientation detected"
+      ],
+      [
+        1794095434.984499,
+        "[cal] Hold still, measuring up side"
+      ],
+      [
+        1794095435.904493,
+        "[cal] up side result: [-0.310 0.133 9.765]"
+      ],
+      [
+        1794095435.955853,
+        "[cal] progress <34>"
+      ],
+      [
+        1794095436.006175,
+        "[cal] up side done, rotate to a different side"
+      ],
+      [
+        1794095436.058686,
+        "[cal] up side done, rotate to a different side"
+      ],
+      [
+        1794095436.160896,
+        "[cal] pending: back front left right"
+      ],
+      [
+        1794095436.2119622,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095438.596302,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095439.560838,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095439.915618,
+        "[cal] up side already completed"
+      ],
+      [
+        1794095439.97178,
+        "[cal] pending: back front left right"
+      ],
+      [
+        1794095440.022552,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095442.411979,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095443.684027,
+        "[cal] up side already completed"
+      ],
+      [
+        1794095443.737945,
+        "[cal] pending: back front left right"
+      ],
+      [
+        1794095443.7885141,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095446.124485,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095447.4470809,
+        "[cal] up side already completed"
+      ],
+      [
+        1794095447.502177,
+        "[cal] pending: back front left right"
+      ],
+      [
+        1794095447.552732,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095449.2289019,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095449.941998,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095450.5000699,
+        "[cal] detected motion, hold still..."
+      ],
+      [
+        1794095453.0921228,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095453.142591,
+        "Preflight Fail: Attitude failure (pitch)"
+      ],
+      [
+        1794095456.344503,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095456.395295,
+        "Preflight Fail: horizontal position unstable"
+      ],
+      [
+        1794095456.4469,
+        "Preflight Fail: Attitude failure (pitch)"
+      ],
+      [
+        1794095457.359446,
+        "[cal] detected motion, hold still..."
+      ],
+      [
+        1794095458.478764,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095458.529315,
+        "Preflight Fail: Attitude failure (pitch)"
+      ],
+      [
+        1794095458.579625,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095459.9036102,
+        "[cal] front orientation detected"
+      ],
+      [
+        1794095459.954127,
+        "[cal] front orientation detected"
+      ],
+      [
+        1794095460.00448,
+        "[cal] Hold still, measuring front side"
+      ],
+      [
+        1794095460.570322,
+        "Preflight Fail: Attitude failure (pitch)"
+      ],
+      [
+        1794095460.926402,
+        "[cal] front side result: [-9.848 0.128 0.042]"
+      ],
+      [
+        1794095460.982275,
+        "[cal] progress <51>"
+      ],
+      [
+        1794095460.982307,
+        "[cal] front side done, rotate to a different side"
+      ],
+      [
+        1794095461.0347369,
+        "[cal] front side done, rotate to a different side"
+      ],
+      [
+        1794095461.186568,
+        "[cal] pending: back left right"
+      ],
+      [
+        1794095461.2368782,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095462.6569269,
+        "Preflight Fail: horizontal position unstable"
+      ],
+      [
+        1794095462.707598,
+        "Preflight Fail: Attitude failure (pitch)"
+      ],
+      [
+        1794095463.622957,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095463.8773901,
+        "[cal] detected motion, hold still..."
+      ],
+      [
+        1794095464.7406678,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095466.825923,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095467.7899299,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095468.959549,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095469.0101812,
+        "Preflight Fail: Attitude failure (pitch)"
+      ],
+      [
+        1794095469.113076,
+        "[cal] back orientation detected"
+      ],
+      [
+        1794095469.16415,
+        "[cal] back orientation detected"
+      ],
+      [
+        1794095469.214941,
+        "[cal] Hold still, measuring back side"
+      ],
+      [
+        1794095470.082905,
+        "[cal] back side result: [9.844 -0.118 -0.153]"
+      ],
+      [
+        1794095470.1340952,
+        "[cal] progress <68>"
+      ],
+      [
+        1794095470.18418,
+        "[cal] back side done, rotate to a different side"
+      ],
+      [
+        1794095470.236297,
+        "[cal] back side done, rotate to a different side"
+      ],
+      [
+        1794095470.3881412,
+        "[cal] pending: left right"
+      ],
+      [
+        1794095470.438592,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095472.7786582,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095474.1010969,
+        "[cal] back side already completed"
+      ],
+      [
+        1794095474.1556559,
+        "[cal] pending: left right"
+      ],
+      [
+        1794095474.206958,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095476.242751,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095496.315136,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095496.5697012,
+        "[cal] detected motion, hold still..."
+      ]
+    ],
+    "started": 1794095418.100276,
+    "acks": [
+      0
+    ]
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "sides": {
+        "down": {
+          "px4_reported": [
+            0.118,
+            0.131,
+            -9.963
+          ],
+          "SCALED_IMU": {
+            "mean": [
+              0.11043140652173912,
+              0.12258312499999999,
+              -9.894057097826087
+            ],
+            "n": 46,
+            "tilt_deg": 0.9553570988232414
+          },
+          "SCALED_IMU2": {
+            "mean": [
+              -0.03517602717391304,
+              0.13750628804347825,
+              -9.935202390217391
+            ],
+            "n": 46,
+            "tilt_deg": 0.8184715490960894
+          },
+          "px4_tilt_deg": 1.0138240960298421,
+          "worst_tilt_deg": 1.0138240960298421
+        },
+        "up": {
+          "px4_reported": [
+            0.661,
+            0.143,
+            9.763
+          ],
+          "SCALED_IMU": {
+            "mean": [
+              0.6263464717391304,
+              0.1377194760869565,
+              9.824131419565218
+            ],
+            "n": 46,
+            "tilt_deg": 3.7349061308724893
+          },
+          "SCALED_IMU2": {
+            "mean": [
+              0.6696236445652174,
+              0.12855239021739132,
+              9.62394784673913
+            ],
+            "n": 46,
+            "tilt_deg": 4.052603489345622
+          },
+          "px4_tilt_deg": 3.9625976137775494,
+          "worst_tilt_deg": 4.052603489345622
+        }
+      },
+      "statustext": [
+        [
+          1794095401.917469,
+          "[cal] calibration started: 2 accel"
+        ],
+        [
+          1794095401.970046,
+          "[cal] pending: back front left right up down"
+        ],
+        [
+          1794095402.020546,
+          "[cal] hold vehicle still on a pending side"
+        ],
+        [
+          1794095404.308026,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095405.630215,
+          "[cal] down orientation detected"
+        ],
+        [
+          1794095405.68056,
+          "[cal] down orientation detected"
+        ],
+        [
+          1794095405.7321632,
+          "[cal] Hold still, measuring down side"
+        ],
+        [
+          1794095406.650024,
+          "[cal] down side result: [0.118 0.131 -9.963]"
+        ],
+        [
+          1794095406.701143,
+          "[cal] progress <17>"
+        ],
+        [
+          1794095406.7514691,
+          "[cal] down side done, rotate to a different side"
+        ],
+        [
+          1794095406.804668,
+          "[cal] down side done, rotate to a different side"
+        ],
+        [
+          1794095406.906085,
+          "[cal] pending: back front left right up"
+        ],
+        [
+          1794095406.956633,
+          "[cal] hold vehicle still on a pending side"
+        ],
+        [
+          1794095409.192547,
+          "Preflight Fail: heading estimate not stable"
+        ],
+        [
+          1794095411.279197,
+          "Preflight Fail: heading estimate not stable"
+        ],
+        [
+          1794095411.992189,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095413.5664499,
+          "[cal] up orientation detected"
+        ],
+        [
+          1794095413.616875,
+          "[cal] up orientation detected"
+        ],
+        [
+          1794095413.6673338,
+          "[cal] Hold still, measuring up side"
+        ],
+        [
+          1794095414.585732,
+          "[cal] up side result: [0.661 0.143 9.763]"
+        ]
+      ],
+      "started": 1794095401.860851,
+      "acks": [
+        0,
+        1
+      ],
+      "guard_cancel": {
+        "side": "up",
+        "tilt_deg": 4.052603489345622
+      },
+      "result": "refused_1",
+      "params_unchanged_after": true
+    },
+    {
+      "attempt": 2,
+      "sides": {
+        "down": {
+          "px4_reported": [
+            0.163,
+            0.006,
+            -9.962
+          ],
+          "SCALED_IMU": {
+            "mean": [
+              0.1569064,
+              0.005230213333333333,
+              -9.897960807777777
+            ],
+            "n": 45,
+            "tilt_deg": 0.9087036781499096
+          },
+          "SCALED_IMU2": {
+            "mean": [
+              -0.0008717022222222222,
+              0.00980665,
+              -9.944596876666667
+            ],
+            "n": 45,
+            "tilt_deg": 0.056723754902685636
+          },
+          "px4_tilt_deg": 0.9380347386197441,
+          "worst_tilt_deg": 0.9380347386197441
+        },
+        "up": {
+          "px4_reported": [
+            -0.31,
+            0.133,
+            9.765
+          ],
+          "SCALED_IMU": {
+            "mean": [
+              -0.3065644065217391,
+              0.1264205097826087,
+              9.824131419565218
+            ],
+            "n": 46,
+            "tilt_deg": 1.9332527633888248
+          },
+          "SCALED_IMU2": {
+            "mean": [
+              -0.22555294999999997,
+              0.12002486847826087,
+              9.634607248913042
+            ],
+            "n": 46,
+            "tilt_deg": 1.519068137604725
+          },
+          "px4_tilt_deg": 1.978462687282607,
+          "worst_tilt_deg": 1.978462687282607
+        },
+        "front": {
+          "px4_reported": [
+            -9.848,
+            0.128,
+            0.042
+          ],
+          "SCALED_IMU": {
+            "mean": [
+              -9.849074420652173,
+              0.12428862934782607,
+              0.10360938913043478
+            ],
+            "n": 46,
+            "tilt_deg": 0.9412267723336533
+          },
+          "SCALED_IMU2": {
+            "mean": [
+              -9.814751145652172,
+              0.23088265108695652,
+              0.06651466956521739
+            ],
+            "n": 46,
+            "tilt_deg": 1.402365255174641
+          },
+          "px4_tilt_deg": 0.7837217342009863,
+          "worst_tilt_deg": 1.402365255174641
+        },
+        "back": {
+          "px4_reported": [
+            9.844,
+            -0.118,
+            -0.153
+          ],
+          "SCALED_IMU": {
+            "mean": [
+              9.840304639772727,
+              -0.11188496136363636,
+              -0.08491667386363635
+            ],
+            "n": 44,
+            "tilt_deg": 0.8177830030421319
+          },
+          "SCALED_IMU2": {
+            "mean": [
+              9.797957742045453,
+              -0.2337994511363636,
+              -0.2478407909090909
+            ],
+            "n": 44,
+            "tilt_deg": 1.9916102422344235
+          },
+          "px4_tilt_deg": 1.1244540429606003,
+          "worst_tilt_deg": 1.9916102422344235
+        }
+      },
+      "statustext": [
+        [
+          1794095418.1543748,
+          "[cal] calibration started: 2 accel"
+        ],
+        [
+          1794095418.205614,
+          "[cal] pending: back front left right up down"
+        ],
+        [
+          1794095418.255988,
+          "[cal] hold vehicle still on a pending side"
+        ],
+        [
+          1794095420.18679,
+          "Preflight Fail: horizontal position unstable"
+        ],
+        [
+          1794095422.3212721,
+          "Preflight Fail: heading estimate not stable"
+        ],
+        [
+          1794095422.829835,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095424.102015,
+          "[cal] down orientation detected"
+        ],
+        [
+          1794095424.152736,
+          "[cal] down orientation detected"
+        ],
+        [
+          1794095424.203632,
+          "[cal] Hold still, measuring down side"
+        ],
+        [
+          1794095425.118931,
+          "[cal] down side result: [0.163 0.006 -9.962]"
+        ],
+        [
+          1794095425.171115,
+          "[cal] progress <17>"
+        ],
+        [
+          1794095425.2218182,
+          "[cal] down side done, rotate to a different side"
+        ],
+        [
+          1794095425.2755232,
+          "[cal] down side done, rotate to a different side"
+        ],
+        [
+          1794095425.428673,
+          "[cal] pending: back front left right up"
+        ],
+        [
+          1794095425.4796958,
+          "[cal] hold vehicle still on a pending side"
+        ],
+        [
+          1794095428.681601,
+          "Preflight Fail: heading estimate not stable"
+        ],
+        [
+          1794095433.610153,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095434.882609,
+          "[cal] up orientation detected"
+        ],
+        [
+          1794095434.9341922,
+          "[cal] up orientation detected"
+        ],
+        [
+          1794095434.984499,
+          "[cal] Hold still, measuring up side"
+        ],
+        [
+          1794095435.904493,
+          "[cal] up side result: [-0.310 0.133 9.765]"
+        ],
+        [
+          1794095435.955853,
+          "[cal] progress <34>"
+        ],
+        [
+          1794095436.006175,
+          "[cal] up side done, rotate to a different side"
+        ],
+        [
+          1794095436.058686,
+          "[cal] up side done, rotate to a different side"
+        ],
+        [
+          1794095436.160896,
+          "[cal] pending: back front left right"
+        ],
+        [
+          1794095436.2119622,
+          "[cal] hold vehicle still on a pending side"
+        ],
+        [
+          1794095438.596302,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095439.560838,
+          "Preflight Fail: heading estimate not stable"
+        ],
+        [
+          1794095439.915618,
+          "[cal] up side already completed"
+        ],
+        [
+          1794095439.97178,
+          "[cal] pending: back front left right"
+        ],
+        [
+          1794095440.022552,
+          "[cal] hold vehicle still on a pending side"
+        ],
+        [
+          1794095442.411979,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095443.684027,
+          "[cal] up side already completed"
+        ],
+        [
+          1794095443.737945,
+          "[cal] pending: back front left right"
+        ],
+        [
+          1794095443.7885141,
+          "[cal] hold vehicle still on a pending side"
+        ],
+        [
+          1794095446.124485,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095447.4470809,
+          "[cal] up side already completed"
+        ],
+        [
+          1794095447.502177,
+          "[cal] pending: back front left right"
+        ],
+        [
+          1794095447.552732,
+          "[cal] hold vehicle still on a pending side"
+        ],
+        [
+          1794095449.2289019,
+          "Preflight Fail: heading estimate not stable"
+        ],
+        [
+          1794095449.941998,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095450.5000699,
+          "[cal] detected motion, hold still..."
+        ],
+        [
+          1794095453.0921228,
+          "Preflight Fail: heading estimate not stable"
+        ],
+        [
+          1794095453.142591,
+          "Preflight Fail: Attitude failure (pitch)"
+        ],
+        [
+          1794095456.344503,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095456.395295,
+          "Preflight Fail: horizontal position unstable"
+        ],
+        [
+          1794095456.4469,
+          "Preflight Fail: Attitude failure (pitch)"
+        ],
+        [
+          1794095457.359446,
+          "[cal] detected motion, hold still..."
+        ],
+        [
+          1794095458.478764,
+          "Preflight Fail: heading estimate not stable"
+        ],
+        [
+          1794095458.529315,
+          "Preflight Fail: Attitude failure (pitch)"
+        ],
+        [
+          1794095458.579625,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095459.9036102,
+          "[cal] front orientation detected"
+        ],
+        [
+          1794095459.954127,
+          "[cal] front orientation detected"
+        ],
+        [
+          1794095460.00448,
+          "[cal] Hold still, measuring front side"
+        ],
+        [
+          1794095460.570322,
+          "Preflight Fail: Attitude failure (pitch)"
+        ],
+        [
+          1794095460.926402,
+          "[cal] front side result: [-9.848 0.128 0.042]"
+        ],
+        [
+          1794095460.982275,
+          "[cal] progress <51>"
+        ],
+        [
+          1794095460.982307,
+          "[cal] front side done, rotate to a different side"
+        ],
+        [
+          1794095461.0347369,
+          "[cal] front side done, rotate to a different side"
+        ],
+        [
+          1794095461.186568,
+          "[cal] pending: back left right"
+        ],
+        [
+          1794095461.2368782,
+          "[cal] hold vehicle still on a pending side"
+        ],
+        [
+          1794095462.6569269,
+          "Preflight Fail: horizontal position unstable"
+        ],
+        [
+          1794095462.707598,
+          "Preflight Fail: Attitude failure (pitch)"
+        ],
+        [
+          1794095463.622957,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095463.8773901,
+          "[cal] detected motion, hold still..."
+        ],
+        [
+          1794095464.7406678,
+          "Preflight Fail: heading estimate not stable"
+        ],
+        [
+          1794095466.825923,
+          "Preflight Fail: heading estimate not stable"
+        ],
+        [
+          1794095467.7899299,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095468.959549,
+          "Preflight Fail: heading estimate not stable"
+        ],
+        [
+          1794095469.0101812,
+          "Preflight Fail: Attitude failure (pitch)"
+        ],
+        [
+          1794095469.113076,
+          "[cal] back orientation detected"
+        ],
+        [
+          1794095469.16415,
+          "[cal] back orientation detected"
+        ],
+        [
+          1794095469.214941,
+          "[cal] Hold still, measuring back side"
+        ],
+        [
+          1794095470.082905,
+          "[cal] back side result: [9.844 -0.118 -0.153]"
+        ],
+        [
+          1794095470.1340952,
+          "[cal] progress <68>"
+        ],
+        [
+          1794095470.18418,
+          "[cal] back side done, rotate to a different side"
+        ],
+        [
+          1794095470.236297,
+          "[cal] back side done, rotate to a different side"
+        ],
+        [
+          1794095470.3881412,
+          "[cal] pending: left right"
+        ],
+        [
+          1794095470.438592,
+          "[cal] hold vehicle still on a pending side"
+        ],
+        [
+          1794095472.7786582,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095474.1010969,
+          "[cal] back side already completed"
+        ],
+        [
+          1794095474.1556559,
+          "[cal] pending: left right"
+        ],
+        [
+          1794095474.206958,
+          "[cal] hold vehicle still on a pending side"
+        ],
+        [
+          1794095476.242751,
+          "Preflight Fail: heading estimate not stable"
+        ],
+        [
+          1794095496.315136,
+          "[cal] detected rest position, hold still..."
+        ],
+        [
+          1794095496.5697012,
+          "[cal] detected motion, hold still..."
+        ]
+      ],
+      "started": 1794095418.100276,
+      "acks": [
+        0
+      ]
+    }
+  ],
+  "stopped_by_user": true
+}

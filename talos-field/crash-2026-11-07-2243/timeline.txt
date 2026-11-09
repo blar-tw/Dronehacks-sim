@@ -1,0 +1,160 @@
+[WARN] [1794122690.002511652] [rosbag2_storage_mcap]: no message indices found, falling back to reading in file order
+  -2.98 EVENT vo_state None -> 1
+  -2.98 odom (-0.00,-0.00,-0.00) px4 (-0.00,-0.00,-0.05) v_xy 0.00 sp None px4target (-0.0, -0.0, -0.05) PX4target-PX4pos 0.00m range 0.10/0 path 0.0m
+  -2.97 EVENT landed True
+  -2.51 EVENT nav_state 1 arming 1
+  -2.47 odom (-0.00,-0.00,-0.00) px4 (-0.00,-0.00,-0.05) v_xy 0.00 sp (-0.0, -0.0, -0.05) px4target (-0.0, -0.0, -0.05) PX4target-PX4pos 0.00m range 0.10/0 path 0.0m
+  -2.44 EVENT nav_state 1 arming 2
+  -1.97 odom (-0.00,-0.00,-0.00) px4 (-0.00,-0.00,-0.05) v_xy 0.00 sp (-0.0, -0.0, -0.05) px4target (-0.0, -0.0, -0.05) PX4target-PX4pos 0.00m range 0.10/0 path 0.0m
+  -1.47 odom (-0.00,-0.00,-0.00) px4 (-0.00,-0.00,-0.05) v_xy 0.00 sp (-0.0, -0.0, -0.05) px4target (-0.0, -0.0, -0.05) PX4target-PX4pos 0.00m range 0.10/0 path 0.0m
+  -0.96 odom (-0.00,-0.00,-0.00) px4 (0.00,-0.00,-0.05) v_xy 0.01 sp (0.0, -0.0, -0.05) px4target (-0.0, -0.0, -0.05) PX4target-PX4pos 0.00m range 0.10/0 path 0.0m
+  -0.46 odom (-0.00,-0.00,-0.00) px4 (0.00,-0.00,-0.05) v_xy 0.01 sp (0.0, -0.0, -0.05) px4target (0.0, -0.0, -0.05) PX4target-PX4pos 0.00m range 0.10/0 path 0.0m
+  -0.20 EVENT nav_state 2 arming 2
+  -0.06 EVENT nav_state 14 arming 2
+   0.05 odom (-0.00,-0.00,-0.00) px4 (0.00,-0.00,-0.04) v_xy 0.00 sp (0.0, -0.0, -0.05) px4target (0.0, -0.0, -0.05) PX4target-PX4pos 0.00m range 0.10/0 path 0.0m
+   0.55 odom (-0.00,-0.00,-0.00) px4 (0.00,-0.00,-0.04) v_xy 0.01 sp (0.0, -0.0, 0.16) px4target (0.0, -0.0, 0.13) PX4target-PX4pos 0.00m range 0.10/0 path 0.0m
+   1.03 EVENT landed False
+   1.05 odom (-0.00,-0.00,-0.00) px4 (0.00,-0.00,-0.04) v_xy 0.00 sp (0.0, -0.0, 0.41) px4target (0.0, -0.0, 0.38) PX4target-PX4pos 0.00m range 0.10/0 path 0.0m
+   1.56 odom (-0.00,-0.00,-0.00) px4 (-0.00,-0.00,-0.04) v_xy 0.01 sp (-0.0, -0.0, 0.56) px4target (-0.0, -0.0, 0.56) PX4target-PX4pos 0.00m range 0.10/0 path 0.0m
+   2.06 odom (-0.03,-0.01,0.08) px4 (-0.03,-0.02,0.08) v_xy 0.10 sp (-0.0, -0.0, 0.57) px4target (-0.0, -0.0, 0.57) PX4target-PX4pos 0.03m range 0.15/0 path 0.0m
+   2.57 odom (-0.07,-0.02,0.22) px4 (-0.09,-0.02,0.21) v_xy 0.07 sp (-0.01, -0.01, 0.58) px4target (-0.01, -0.01, 0.58) PX4target-PX4pos 0.08m range 0.29/0 path 0.1m
+   3.07 odom (-0.10,-0.02,0.34) px4 (-0.11,-0.02,0.23) v_xy 0.01 sp (-0.01, -0.01, 0.56) px4target (-0.01, -0.01, 0.56) PX4target-PX4pos 0.10m range 0.31/0 path 0.1m
+   3.57 odom (-0.09,-0.02,0.46) px4 (-0.10,-0.03,0.21) v_xy 0.05 sp (-0.01, -0.01, 0.46) px4target (-0.01, -0.01, 0.5) PX4target-PX4pos 0.09m range 0.30/0 path 0.1m
+   4.08 odom (-0.06,-0.03,0.58) px4 (-0.06,-0.04,0.16) v_xy 0.07 sp (0.1, -0.01, 0.37) px4target (0.05, -0.01, 0.37) PX4target-PX4pos 0.12m range 0.25/0 path 0.2m
+   4.58 odom (-0.02,-0.04,0.69) px4 (-0.01,-0.04,0.11) v_xy 0.14 sp (0.3, -0.02, 0.19) px4target (0.26, -0.02, 0.25) PX4target-PX4pos 0.26m range 0.22/0 path 0.2m
+   5.09 odom (0.06,-0.05,0.78) px4 (0.10,-0.04,0.05) v_xy 0.26 sp (0.52, -0.02, 0.06) px4target (0.47, -0.02, 0.06) PX4target-PX4pos 0.37m range 0.19/0 path 0.3m
+   5.60 odom (0.20,-0.06,0.86) px4 (0.26,-0.05,-0.02) v_xy 0.35 sp (0.73, -0.02, -0.11) px4target (0.68, -0.02, -0.05) PX4target-PX4pos 0.43m range 0.13/0 path 0.5m
+   6.10 odom (0.38,-0.06,0.90) px4 (0.45,-0.06,-0.08) v_xy 0.41 sp (0.92, -0.03, -0.22) px4target (0.88, -0.03, -0.22) PX4target-PX4pos 0.43m range 0.09/0 path 0.7m
+   6.60 odom (0.59,-0.07,0.91) px4 (0.66,-0.07,-0.13) v_xy 0.44 sp (1.12, -0.03, -0.27) px4target (1.08, -0.03, -0.27) PX4target-PX4pos 0.42m range 0.06/0 path 0.9m
+   7.10 odom (0.80,-0.11,0.92) px4 (0.88,-0.09,-0.15) v_xy 0.45 sp (1.32, -0.03, -0.27) px4target (1.32, -0.03, -0.27) PX4target-PX4pos 0.45m range 0.02/0 path 1.1m
+   7.61 odom (1.71,-0.35,0.81) px4 (1.09,-0.23,-0.36) v_xy 0.43 sp (1.1, 0.04, -0.3) px4target (1.1, 0.04, -0.3) PX4target-PX4pos 0.28m range 0.02/0 path 1.3m
+   8.12 odom (-33.97,-25.76,-1.97) px4 (1.27,-0.43,-1.96) v_xy 0.49 sp (1.1, 0.04, -0.3) px4target (1.1, 0.04, -0.3) PX4target-PX4pos 0.50m range 0.00/0 path 1.5m
+   8.23 EVENT vo_state 1 -> 2
+   8.27 EVENT vo_state 2 -> 1
+   8.28 EVENT vision reset_counter 0 -> 1  (bridge pos NED -23.79, -30.63, 1.55)
+   8.31 EVENT PX4 reset xy 51->52 z 2->2  delta_xy (-23.34, -31.98) delta_z 0.04  px4 now ENU (-30.56, -23.79, -2.69)
+   8.62 odom (-30.78,-23.44,-1.29) px4 (-30.44,-23.68,-3.75) v_xy 0.70 sp (-30.61, -23.77, -1.71) px4target (-30.61, -23.77, -0.5) PX4target-PX4pos 0.19m range 0.00/0 path 1.7m
+   9.12 odom (-30.79,-23.42,-1.28) px4 (-30.36,-23.21,-5.42) v_xy 0.84 sp (-30.61, -23.77, -1.71) px4target (-30.61, -23.77, -0.5) PX4target-PX4pos 0.61m range 0.00/0 path 2.1m
+   9.48 EVENT PX4 reset xy 52->53 z 2->2  delta_xy (-15.43, 30.56) delta_z 0.04  px4 now ENU (0.35, -38.36, -6.59)
+   9.62 odom (-30.79,-23.42,-1.28) px4 (0.41,-38.27,-7.00) v_xy 0.87 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 38.26m range 0.00/0 path 2.6m
+   9.64 EVENT PX4 reset xy 53->54 z 2->2  delta_xy (15.02, -31.05) delta_z 0.04  px4 now ENU (-30.63, -23.24, -7.06)
+  10.12 odom (-30.79,-23.42,-1.28) px4 (-30.54,-23.13,-8.26) v_xy 0.57 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.33m range 0.00/0 path 3.0m
+  10.63 odom (-30.79,-23.42,-1.28) px4 (-30.68,-23.30,-9.08) v_xy 0.07 sp (-30.79, -23.42, -1.28) px4target (-30.79, -23.42, -0.5) PX4target-PX4pos 0.16m range 0.00/0 path 3.1m
+  11.13 odom (-30.79,-23.42,-1.28) px4 (-30.83,-23.47,-9.48) v_xy 0.18 sp (-30.79, -23.42, -1.28) px4target (-30.79, -23.42, -0.5) PX4target-PX4pos 0.07m range 0.00/0 path 3.1m
+  11.63 odom (-30.79,-23.42,-1.28) px4 (-30.90,-23.55,-9.47) v_xy 0.25 sp (-30.79, -23.42, -1.28) px4target (-30.79, -23.42, -0.5) PX4target-PX4pos 0.17m range 0.00/0 path 3.3m
+  12.14 odom (-30.79,-23.42,-1.28) px4 (-30.91,-23.56,-9.11) v_xy 0.24 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.88m range 0.00/0 path 3.4m
+  12.33 EVENT nav_state 14 arming 1
+  12.65 odom (-30.79,-23.42,-1.28) px4 (-30.89,-23.54,-8.53) v_xy 0.18 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.85m range 0.00/0 path 3.5m
+  13.15 odom (-30.79,-23.42,-1.28) px4 (-30.84,-23.48,-7.72) v_xy 0.01 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.77m range 0.00/0 path 3.5m
+  13.33 EVENT landed True
+  13.65 odom (-30.79,-23.42,-1.28) px4 (-30.79,-23.38,-6.56) v_xy 0.11 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.67m range 0.10/0 path 3.6m
+  14.16 odom (-30.79,-23.42,-1.28) px4 (-30.77,-23.35,-4.92) v_xy 0.09 sp (-30.79, -23.42, -1.28) px4target (-30.79, -23.42, -0.5) PX4target-PX4pos 0.06m range 0.62/1 path 3.6m
+  14.66 odom (-30.79,-23.42,-1.28) px4 (-30.78,-23.36,-4.06) v_xy 0.06 sp (-30.79, -23.42, -1.28) px4target (-30.79, -23.42, -0.5) PX4target-PX4pos 0.05m range 0.68/1 path 3.7m
+  15.16 odom (-30.79,-23.42,-1.28) px4 (-30.78,-23.38,-3.52) v_xy 0.05 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.67m range 0.36/1 path 3.7m
+  15.67 odom (-30.79,-23.42,-1.28) px4 (-30.79,-23.39,-3.17) v_xy 0.03 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.68m range 0.32/1 path 3.7m
+  16.17 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.40,-2.91) v_xy 0.02 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.69m range 0.36/1 path 3.7m
+  16.67 odom (-30.79,-23.42,-1.28) px4 (-30.79,-23.40,-2.72) v_xy 0.02 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.69m range 0.40/1 path 3.7m
+  17.04 EVENT PX4 reset xy 54->55 z 2->2  delta_xy (0.00, 0.00) delta_z 0.04  px4 now ENU (-30.79, -23.40, -2.62)
+  17.12 EVENT PX4 reset xy 55->56 z 2->2  delta_xy (-15.03, 32.09) delta_z 0.04  px4 now ENU (1.30, -38.43, -2.60)
+  17.18 odom (-30.79,-23.41,-1.28) px4 (1.30,-38.43,-2.58) v_xy 0.00 sp (-30.79, -23.42, -1.28) px4target (-30.79, -23.42, -0.5) PX4target-PX4pos 35.43m range 0.42/1 path 3.7m
+  17.69 odom (-30.79,-23.41,-1.28) px4 (1.30,-38.44,-2.48) v_xy 0.01 sp (-30.79, -23.42, -1.28) px4target (-30.79, -23.42, -0.5) PX4target-PX4pos 35.43m range 0.44/1 path 3.8m
+  17.97 EVENT PX4 reset xy 56->57 z 2->2  delta_xy (15.02, -32.09) delta_z 0.04  px4 now ENU (-30.79, -23.42, -2.44)
+  18.19 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.42,-2.40) v_xy 0.01 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.70m range 0.45/1 path 3.8m
+  18.69 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.42,-2.34) v_xy 0.02 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.69m range 0.46/1 path 3.8m
+  19.20 odom (-30.79,-23.41,-1.28) px4 (-30.78,-23.41,-2.30) v_xy 0.03 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.69m range 0.46/1 path 3.8m
+  19.24 EVENT PX4 reset xy 57->58 z 2->2  delta_xy (0.00, 0.00) delta_z 0.04  px4 now ENU (-30.78, -23.41, -2.30)
+  19.70 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.41,-2.27) v_xy 0.01 sp (1.16, 0.03, -0.33) px4target (1.16, 0.03, -0.33) PX4target-PX4pos 39.62m range 0.46/1 path 3.8m
+  19.83 EVENT PX4 reset xy 58->59 z 2->2  delta_xy (-0.00, -0.00) delta_z 0.04  px4 now ENU (-30.79, -23.42, -2.26)
+  19.85 EVENT PX4 reset xy 59->60 z 2->3  delta_xy (0.01, 0.00) delta_z 0.96  px4 now ENU (-30.78, -23.41, -3.22)
+  19.85 EVENT PX4 reset xy 60->61 z 3->3  delta_xy (-0.01, -0.00) delta_z 0.96  px4 now ENU (-30.79, -23.42, -3.22)
+  20.22 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.42,-3.21) v_xy 0.01 sp (-30.88, -23.38, -2.22) px4target (-30.88, -23.38, -0.5) PX4target-PX4pos 0.10m range 0.16/0 path 3.8m
+  20.72 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.40,-3.19) v_xy 0.03 sp (-30.79, -23.41, -1.28) px4target (-30.88, -23.38, -0.5) PX4target-PX4pos 0.09m range 0.16/0 path 3.8m
+  21.11 EVENT PX4 reset xy 61->62 z 3->3  delta_xy (0.00, 0.00) delta_z 0.96  px4 now ENU (-30.79, -23.39, -3.18)
+  21.22 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.39,-3.18) v_xy 0.01 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.68m range 0.15/0 path 3.8m
+  21.72 odom (-30.79,-23.41,-1.28) px4 (-30.78,-23.41,-3.16) v_xy 0.03 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.69m range 0.14/0 path 3.8m
+  22.14 EVENT PX4 reset xy 62->63 z 3->3  delta_xy (-0.01, -0.01) delta_z 0.96  px4 now ENU (-30.79, -23.43, -3.15)
+  22.17 EVENT PX4 reset xy 63->64 z 3->4  delta_xy (0.02, 0.01) delta_z -0.96  px4 now ENU (-30.78, -23.41, -2.19)
+  22.23 odom (-30.79,-23.41,-1.28) px4 (-30.78,-23.41,-2.19) v_xy 0.03 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.69m range 0.39/1 path 3.8m
+  22.73 odom (-30.79,-23.41,-1.28) px4 (-30.78,-23.42,-2.18) v_xy 0.03 sp (1.26, -0.01, -0.32) px4target (1.25, -0.01, -0.33) PX4target-PX4pos 39.67m range 0.36/1 path 3.9m
+  22.87 EVENT PX4 reset xy 64->65 z 4->4  delta_xy (-0.01, -0.01) delta_z -0.96  px4 now ENU (-30.79, -23.43, -2.18)
+  23.23 odom (-30.79,-23.42,-1.28) px4 (-30.79,-23.42,-2.18) v_xy 0.01 sp (-30.8, -23.42, -2.19) px4target (1.27, -0.03, -0.31) PX4target-PX4pos 39.69m range 0.34/1 path 3.9m
+  23.74 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.41,-2.18) v_xy 0.02 sp (-30.79, -23.42, -2.18) px4target (-30.79, -23.42, -0.5) PX4target-PX4pos 0.01m range 0.32/1 path 3.9m
+  24.07 EVENT PX4 reset xy 65->66 z 4->4  delta_xy (0.00, 0.00) delta_z -0.96  px4 now ENU (-30.78, -23.40, -2.18)
+  24.11 EVENT PX4 reset xy 66->67 z 4->4  delta_xy (52.25, 56.21) delta_z -0.96  px4 now ENU (25.42, 28.85, -2.18)
+  24.25 odom (-30.79,-23.41,-1.28) px4 (25.42,28.84,-2.18) v_xy 0.00 sp (-30.79, -23.41, -2.18) px4target (-30.79, -23.41, -0.5) PX4target-PX4pos 76.75m range 0.30/1 path 3.9m
+  24.47 EVENT PX4 reset xy 67->68 z 4->4  delta_xy (0.00, 0.00) delta_z -0.96  px4 now ENU (25.42, 28.84, -2.19)
+  24.55 EVENT PX4 reset xy 68->69 z 4->4  delta_xy (-67.26, -24.31) delta_z -0.96  px4 now ENU (1.11, -38.42, -2.19)
+  24.75 odom (-30.79,-23.41,-1.28) px4 (1.11,-38.43,-2.19) v_xy 0.01 sp (1.29, -0.02, -0.31) px4target (1.29, -0.02, -0.31) PX4target-PX4pos 38.40m range 0.27/1 path 3.9m
+  24.88 EVENT PX4 reset xy 69->70 z 4->4  delta_xy (15.01, -31.90) delta_z -0.96  px4 now ENU (-30.79, -23.42, -2.19)
+  25.20 EVENT PX4 reset xy 70->71 z 4->4  delta_xy (0.00, 0.00) delta_z -0.96  px4 now ENU (-30.79, -23.42, -2.19)
+  25.25 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.42,-2.19) v_xy 0.01 sp (1.29, -0.03, -0.31) px4target (1.29, -0.03, -0.31) PX4target-PX4pos 39.70m range 0.25/1 path 3.9m
+  25.65 EVENT PX4 reset xy 71->72 z 4->4  delta_xy (-15.01, 31.91) delta_z -0.96  px4 now ENU (1.12, -38.43, -2.19)
+  25.75 odom (-30.79,-23.41,-1.28) px4 (1.12,-38.43,-2.19) v_xy 0.02 sp (1.29, -0.03, -0.31) px4target (1.29, -0.03, -0.31) PX4target-PX4pos 38.40m range 0.22/1 path 3.9m
+  26.03 EVENT PX4 reset xy 72->73 z 4->4  delta_xy (0.00, 0.00) delta_z -0.96  px4 now ENU (1.12, -38.43, -2.19)
+  26.15 EVENT PX4 reset xy 73->74 z 4->4  delta_xy (15.01, -31.91) delta_z -0.96  px4 now ENU (-30.79, -23.42, -2.19)
+  26.26 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.42,-2.19) v_xy 0.01 sp (1.29, -0.03, -0.31) px4target (1.29, -0.03, -0.31) PX4target-PX4pos 39.70m range 0.20/1 path 3.9m
+  26.77 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.41,-2.19) v_xy 0.03 sp (-30.79, -23.41, -2.19) px4target (-30.79, -23.42, -0.5) PX4target-PX4pos 0.01m range 0.18/1 path 3.9m
+  27.27 odom (-30.79,-23.41,-1.28) px4 (-30.78,-23.39,-2.19) v_xy 0.05 sp (-30.79, -23.41, -2.19) px4target (-30.79, -23.41, -0.5) PX4target-PX4pos 0.01m range 0.16/1 path 3.9m
+  27.40 EVENT PX4 reset xy 74->75 z 4->4  delta_xy (0.00, 0.00) delta_z -0.96  px4 now ENU (-30.78, -23.39, -2.19)
+  27.72 EVENT PX4 reset xy 75->76 z 4->4  delta_xy (-15.00, 32.24) delta_z -0.96  px4 now ENU (1.45, -38.40, -2.19)
+  27.77 odom (-30.79,-23.41,-1.28) px4 (1.45,-38.40,-2.19) v_xy 0.02 sp (1.29, -0.01, -0.32) px4target (1.29, -0.01, -0.32) PX4target-PX4pos 38.39m range 0.14/1 path 3.9m
+  28.03 EVENT PX4 reset xy 76->77 z 4->4  delta_xy (15.00, -32.24) delta_z -0.96  px4 now ENU (-30.79, -23.42, -2.19)
+  28.28 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.42,-2.20) v_xy 0.01 sp (1.29, -0.02, -0.32) px4target (1.29, -0.02, -0.32) PX4target-PX4pos 39.71m range 0.13/1 path 4.0m
+  28.78 odom (-30.79,-23.42,-1.28) px4 (-30.78,-23.41,-2.20) v_xy 0.04 sp (1.29, -0.02, -0.32) px4target (1.29, -0.02, -0.32) PX4target-PX4pos 39.69m range 0.12/1 path 4.0m
+  28.87 EVENT PX4 reset xy 77->78 z 4->4  delta_xy (0.00, 0.00) delta_z -0.96  px4 now ENU (-30.78, -23.40, -2.20)
+  28.89 EVENT PX4 reset xy 78->79 z 4->4  delta_xy (52.21, 56.23) delta_z -0.96  px4 now ENU (25.45, 28.81, -2.20)
+  29.29 odom (-30.79,-23.41,-1.28) px4 (25.45,28.80,-2.20) v_xy 0.02 sp (1.29, -0.02, -0.32) px4target (1.29, -0.02, -0.32) PX4target-PX4pos 37.61m range 0.11/1 path 4.0m
+  29.49 EVENT PX4 reset xy 79->80 z 4->4  delta_xy (-52.21, -56.23) delta_z -0.96  px4 now ENU (-30.79, -23.42, -2.19)
+  29.79 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.42,-2.19) v_xy 0.02 sp (-30.79, -23.42, -2.19) px4target (-30.79, -23.41, -0.5) PX4target-PX4pos 0.01m range 0.10/1 path 4.0m
+  29.84 EVENT PX4 reset xy 80->81 z 4->5  delta_xy (-0.00, -0.00) delta_z 0.86  px4 now ENU (-30.79, -23.43, -3.05)
+  29.94 EVENT PX4 reset xy 81->82 z 5->5  delta_xy (0.00, 0.00) delta_z 0.86  px4 now ENU (-30.79, -23.42, -3.05)
+  30.18 EVENT PX4 reset xy 82->83 z 5->5  delta_xy (-15.07, 31.87) delta_z 0.86  px4 now ENU (1.08, -38.49, -3.05)
+  30.30 odom (-30.79,-23.41,-1.28) px4 (1.08,-38.49,-3.05) v_xy 0.02 sp (-30.79, -23.42, -2.19) px4target (-30.79, -23.42, -0.5) PX4target-PX4pos 35.25m range 0.11/0 path 4.0m
+  30.80 odom (-30.79,-23.41,-1.28) px4 (1.09,-38.50,-3.05) v_xy 0.04 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 38.47m range 0.11/0 path 4.0m
+  30.89 EVENT PX4 reset xy 83->84 z 5->5  delta_xy (0.00, 0.00) delta_z 0.86  px4 now ENU (1.09, -38.50, -3.05)
+  31.30 odom (-30.79,-23.41,-1.28) px4 (1.09,-38.50,-3.04) v_xy 0.03 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 38.47m range 0.11/0 path 4.0m
+  31.63 EVENT PX4 reset xy 84->85 z 5->5  delta_xy (15.07, -31.88) delta_z 0.86  px4 now ENU (-30.79, -23.43, -3.04)
+  31.80 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.43,-3.04) v_xy 0.02 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.70m range 0.11/0 path 4.0m
+  32.01 EVENT PX4 reset xy 85->86 z 5->5  delta_xy (0.00, 0.00) delta_z 0.86  px4 now ENU (-30.78, -23.42, -3.04)
+  32.30 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.42,-3.04) v_xy 0.02 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.69m range 0.11/0 path 4.1m
+  32.76 EVENT PX4 reset xy 86->87 z 5->5  delta_xy (0.01, -0.01) delta_z 0.86  px4 now ENU (-30.79, -23.42, -3.04)
+  32.81 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.42,-3.04) v_xy 0.03 sp (-30.79, -23.41, -1.28) px4target (-30.79, -23.41, -0.5) PX4target-PX4pos 0.01m range 0.11/0 path 4.1m
+  33.32 odom (-30.79,-23.41,-1.28) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-30.79, -23.41, -1.28) px4target (-30.79, -23.41, -0.5) PX4target-PX4pos 0.02m range 0.11/0 path 4.1m
+  33.82 odom (-30.87,-23.47,-1.27) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.71m range 0.11/0 path 4.1m
+  34.37 odom (-30.86,-23.48,-1.34) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.71m range 0.11/0 path 4.1m
+  34.88 odom (-30.80,-23.61,-1.46) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.71m range 0.11/0 path 4.1m
+  35.40 odom (-30.67,-24.09,-1.50) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.71m range 0.11/0 path 4.1m
+  35.90 odom (-30.53,-24.27,-1.61) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-30.54, -24.28, -1.59) px4target (-30.54, -24.28, -0.5) PX4target-PX4pos 0.88m range 0.11/0 path 4.1m
+  36.40 odom (-30.49,-24.25,-1.67) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-30.54, -24.28, -1.59) px4target (-30.54, -24.28, -0.5) PX4target-PX4pos 0.88m range 0.11/0 path 4.1m
+  36.90 odom (-30.15,-24.42,-1.76) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-30.54, -24.28, -1.59) px4target (-30.54, -24.28, -0.5) PX4target-PX4pos 0.88m range 0.11/0 path 4.1m
+  37.40 odom (-30.10,-24.41,-2.17) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.71m range 0.11/0 path 4.1m
+  37.90 odom (-30.11,-24.39,-2.19) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (0.94, 0.46, -0.29) px4target (0.94, 0.46, -0.29) PX4target-PX4pos 39.72m range 0.11/0 path 4.1m
+  38.42 odom (-30.09,-24.41,-2.21) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (0.71, 0.78, -0.25) px4target (0.71, 0.78, -0.25) PX4target-PX4pos 39.73m range 0.11/0 path 4.1m
+  38.92 odom (-30.13,-24.41,-2.25) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (0.64, 0.89, -0.22) px4target (0.65, 0.87, -0.23) PX4target-PX4pos 39.74m range 0.11/0 path 4.1m
+  39.42 odom (-30.16,-24.36,-2.25) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-30.78, -23.48, -3.05) px4target (-30.78, -23.48, -0.5) PX4target-PX4pos 0.05m range 0.11/0 path 4.1m
+  39.97 odom (-30.31,-24.14,-1.99) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-30.73, -23.53, -3.07) px4target (-30.73, -23.53, -0.5) PX4target-PX4pos 0.11m range 0.11/0 path 4.1m
+  40.47 odom (-30.38,-24.03,-1.63) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (0.69, 0.86, -0.22) px4target (0.69, 0.86, -0.22) PX4target-PX4pos 39.76m range 0.11/0 path 4.1m
+  40.98 odom (-30.38,-24.03,-1.62) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.71m range 0.11/0 path 4.1m
+  41.48 odom (-29.83,-24.21,-1.88) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.71m range 0.11/0 path 4.1m
+  42.00 odom (-29.67,-24.12,-1.91) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.71m range 0.11/0 path 4.1m
+  42.52 odom (-29.43,-23.81,-1.86) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-29.66, -24.1, -1.91) px4target (-29.66, -24.1, -0.5) PX4target-PX4pos 1.32m range 0.11/0 path 4.1m
+  43.02 odom (-29.05,-23.54,-1.60) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-29.66, -24.1, -1.91) px4target (-29.66, -24.1, -0.5) PX4target-PX4pos 1.32m range 0.11/0 path 4.1m
+  43.52 odom (-28.42,-23.11,-1.35) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.71m range 0.11/0 path 4.1m
+  44.02 odom (-27.89,-22.75,-1.17) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.71m range 0.11/0 path 4.1m
+  44.57 odom (-27.62,-22.50,-1.05) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.71m range 0.11/0 path 4.1m
+  45.10 odom (-27.07,-22.09,-0.76) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.28, -0.03, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.71m range 0.11/0 path 4.1m
+  45.62 odom (-26.73,-21.80,-0.51) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-27.07, -22.09, -0.76) px4target (-27.07, -22.09, -0.5) PX4target-PX4pos 3.96m range 0.11/0 path 4.1m
+  46.12 odom (-26.50,-21.62,-0.17) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-27.07, -22.09, -0.76) px4target (-27.07, -22.09, -0.5) PX4target-PX4pos 3.96m range 0.11/0 path 4.1m
+  46.67 odom (-26.48,-21.61,-0.09) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.28, -0.06, 0.6) px4target (1.28, -0.03, 0.6) PX4target-PX4pos 39.71m range 0.11/0 path 4.1m
+  47.20 odom (-26.59,-21.72,0.02) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.25, -0.26, 0.6) px4target (1.25, -0.26, 0.6) PX4target-PX4pos 39.54m range 0.11/0 path 4.1m
+  47.70 odom (-26.88,-21.92,0.25) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.22, -0.46, 0.6) px4target (1.22, -0.46, 0.6) PX4target-PX4pos 39.40m range 0.11/0 path 4.1m
+  48.22 odom (-27.02,-22.23,0.36) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-26.92, -21.97, 0.27) px4target (-26.92, -21.97, 0.27) PX4target-PX4pos 4.14m range 0.11/0 path 4.1m
+  48.73 odom (-26.94,-22.54,0.39) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-26.92, -21.97, 0.27) px4target (-26.92, -21.97, 0.27) PX4target-PX4pos 4.14m range 0.11/0 path 4.1m
+  49.24 odom (-26.90,-22.90,0.50) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.18, -0.66, 0.6) px4target (1.19, -0.64, 0.6) PX4target-PX4pos 39.27m range 0.11/0 path 4.1m
+  49.77 odom (-27.10,-23.21,0.57) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.22, -0.85, 0.6) px4target (1.19, -0.82, 0.6) PX4target-PX4pos 39.17m range 0.11/0 path 4.1m
+  50.30 odom (-27.32,-23.46,0.69) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.35, -1.0, 0.6) px4target (1.35, -1.0, 0.6) PX4target-PX4pos 39.19m range 0.11/0 path 4.1m
+  50.82 odom (-27.84,-24.05,0.77) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.49, -1.17, 0.6) px4target (1.48, -1.16, 0.6) PX4target-PX4pos 39.21m range 0.11/0 path 4.1m
+  51.37 odom (-28.14,-24.31,0.73) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-27.98, -24.17, 0.76) px4target (-27.98, -24.17, 0.76) PX4target-PX4pos 2.90m range 0.11/0 path 4.1m
+  51.90 odom (-28.45,-24.49,0.53) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (-27.98, -24.17, 0.76) px4target (-27.98, -24.17, 0.76) PX4target-PX4pos 2.90m range 0.11/0 path 4.1m
+  52.41 odom (-28.60,-24.58,0.33) px4 (-30.79,-23.43,-3.04) v_xy 0.22 sp (1.49, -1.17, 0.6) px4target (1.49, -1.17, 0.6) PX4target-PX4pos 39.21m range 0.11/0 path 4.1m
+SUMMARY horizontal path after Offboard 4.1 m, max horizontal speed 0.87 m/s

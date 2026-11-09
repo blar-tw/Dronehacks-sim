@@ -1,0 +1,411 @@
+{
+  "mode": "guide",
+  "started": 1794095156.285415,
+  "uid": 3473490359910740788,
+  "limits": {
+    "ok_deg": 2.0,
+    "cancel_deg": 3.0,
+    "tol_pct": 0.5
+  },
+  "params_before": {
+    "CAL_ACC0_ID": {
+      "value": 9.734576605731712e-39,
+      "hex": "0a006a00",
+      "type": 6
+    },
+    "CAL_ACC1_ID": {
+      "value": 3.489762866988309e-39,
+      "hex": "0a002600",
+      "type": 6
+    },
+    "CAL_ACC0_XOFF": {
+      "value": 0.0012771934270858765,
+      "hex": "8067a73a",
+      "type": 9
+    },
+    "CAL_ACC0_YOFF": {
+      "value": 0.001145884394645691,
+      "hex": "8031963a",
+      "type": 9
+    },
+    "CAL_ACC0_ZOFF": {
+      "value": 0.06560230255126953,
+      "hex": "805a863d",
+      "type": 9
+    },
+    "CAL_ACC0_XSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC0_YSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC0_ZSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC1_XOFF": {
+      "value": -0.0010569021105766296,
+      "hex": "c0878aba",
+      "type": 9
+    },
+    "CAL_ACC1_YOFF": {
+      "value": -0.0032822489738464355,
+      "hex": "001b57bb",
+      "type": 9
+    },
+    "CAL_ACC1_ZOFF": {
+      "value": -0.19159412384033203,
+      "hex": "403144be",
+      "type": 9
+    },
+    "CAL_ACC1_XSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC1_YSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC1_ZSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    }
+  },
+  "calibration": {
+    "sides": {
+      "down": {
+        "px4_reported": [
+          0.02,
+          0.087,
+          -9.955
+        ],
+        "SCALED_IMU": {
+          "mean": [
+            0.018334171739130434,
+            0.0844224652173913,
+            -9.884676823913043
+          ],
+          "n": 46,
+          "tilt_deg": 0.5007424263488791
+        },
+        "SCALED_IMU2": {
+          "mean": [
+            -0.13601397173913043,
+            0.09508186739130434,
+            -9.93541557826087
+          ],
+          "n": 46,
+          "tilt_deg": 0.9569319023303916
+        },
+        "px4_tilt_deg": 0.5137734302680949,
+        "worst_tilt_deg": 0.9569319023303916
+      },
+      "up": {
+        "px4_reported": [
+          -0.348,
+          0.059,
+          9.778
+        ],
+        "SCALED_IMU": {
+          "mean": [
+            -0.3357711684782609,
+            0.05308382282608696,
+            9.842678779347825
+          ],
+          "n": 46,
+          "tilt_deg": 1.9780661649940037
+        },
+        "SCALED_IMU2": {
+          "mean": [
+            -0.25944984891304346,
+            0.03325733478260869,
+            9.65230185652174
+          ],
+          "n": 46,
+          "tilt_deg": 1.5523078867996283
+        },
+        "px4_tilt_deg": 2.0673639854502026,
+        "worst_tilt_deg": 2.0673639854502026
+      }
+    },
+    "statustext": [
+      [
+        1794095215.321621,
+        "[cal] calibration started: 2 accel"
+      ],
+      [
+        1794095215.374214,
+        "[cal] pending: back front left right up down"
+      ],
+      [
+        1794095215.4249349,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095217.7167659,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095219.038883,
+        "[cal] down orientation detected"
+      ],
+      [
+        1794095219.08933,
+        "[cal] down orientation detected"
+      ],
+      [
+        1794095219.1396852,
+        "[cal] Hold still, measuring down side"
+      ],
+      [
+        1794095220.0533981,
+        "[cal] down side result: [0.020 0.087 -9.955]"
+      ],
+      [
+        1794095220.106185,
+        "[cal] progress <17>"
+      ],
+      [
+        1794095220.1566231,
+        "[cal] down side done, rotate to a different side"
+      ],
+      [
+        1794095220.208986,
+        "[cal] down side done, rotate to a different side"
+      ],
+      [
+        1794095220.315874,
+        "[cal] pending: back front left right up"
+      ],
+      [
+        1794095220.367733,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095222.759597,
+        "Preflight Fail: horizontal position unstable"
+      ],
+      [
+        1794095224.851949,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095226.6886039,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095227.957943,
+        "[cal] up orientation detected"
+      ],
+      [
+        1794095228.009126,
+        "[cal] up orientation detected"
+      ],
+      [
+        1794095228.0592,
+        "[cal] Hold still, measuring up side"
+      ],
+      [
+        1794095228.975337,
+        "[cal] up side result: [-0.348 0.059 9.778]"
+      ],
+      [
+        1794095229.0280268,
+        "[cal] progress <34>"
+      ],
+      [
+        1794095229.079081,
+        "[cal] up side done, rotate to a different side"
+      ],
+      [
+        1794095229.129685,
+        "[cal] up side done, rotate to a different side"
+      ],
+      [
+        1794095229.282597,
+        "[cal] pending: back front left right"
+      ],
+      [
+        1794095229.333708,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095231.6769621,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095232.9991271,
+        "[cal] up side already completed"
+      ],
+      [
+        1794095233.0495958,
+        "[cal] pending: back front left right"
+      ],
+      [
+        1794095233.100582,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095234.068337,
+        "Preflight Fail: horizontal position unstable"
+      ],
+      [
+        1794095235.447179,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095236.1589818,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095236.7178729,
+        "[cal] up side already completed"
+      ],
+      [
+        1794095236.7690408,
+        "[cal] pending: back front left right"
+      ],
+      [
+        1794095236.819225,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095239.2109802,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095240.4833002,
+        "[cal] up side already completed"
+      ],
+      [
+        1794095240.584276,
+        "[cal] pending: back front left right"
+      ],
+      [
+        1794095240.635723,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095241.549566,
+        "Preflight Fail: horizontal position unstable"
+      ],
+      [
+        1794095242.977323,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095243.638386,
+        "Preflight Fail: heading estimate not stable"
+      ],
+      [
+        1794095244.247824,
+        "[cal] up side already completed"
+      ],
+      [
+        1794095244.299008,
+        "[cal] pending: back front left right"
+      ],
+      [
+        1794095244.399646,
+        "[cal] hold vehicle still on a pending side"
+      ],
+      [
+        1794095246.796457,
+        "[cal] detected rest position, hold still..."
+      ],
+      [
+        1794095248.0719712,
+        "[cal] up side already completed"
+      ],
+      [
+        1794095248.122436,
+        "[cal] calibration failed: timeout: no motion"
+      ]
+    ],
+    "started": 1794095215.2712471,
+    "acks": [
+      0
+    ],
+    "result": "failed: [cal] calibration failed: timeout: no motion"
+  },
+  "params_after": {
+    "CAL_ACC0_ID": {
+      "value": 9.734576605731712e-39,
+      "hex": "0a006a00",
+      "type": 6
+    },
+    "CAL_ACC1_ID": {
+      "value": 3.489762866988309e-39,
+      "hex": "0a002600",
+      "type": 6
+    },
+    "CAL_ACC0_XOFF": {
+      "value": 0.0012771934270858765,
+      "hex": "8067a73a",
+      "type": 9
+    },
+    "CAL_ACC0_YOFF": {
+      "value": 0.001145884394645691,
+      "hex": "8031963a",
+      "type": 9
+    },
+    "CAL_ACC0_ZOFF": {
+      "value": 0.06560230255126953,
+      "hex": "805a863d",
+      "type": 9
+    },
+    "CAL_ACC0_XSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC0_YSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC0_ZSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC1_XOFF": {
+      "value": -0.0010569021105766296,
+      "hex": "c0878aba",
+      "type": 9
+    },
+    "CAL_ACC1_YOFF": {
+      "value": -0.0032822489738464355,
+      "hex": "001b57bb",
+      "type": 9
+    },
+    "CAL_ACC1_ZOFF": {
+      "value": -0.19159412384033203,
+      "hex": "403144be",
+      "type": 9
+    },
+    "CAL_ACC1_XSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC1_YSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    },
+    "CAL_ACC1_ZSCALE": {
+      "value": 1.0,
+      "hex": "0000803f",
+      "type": 9
+    }
+  }
+}
