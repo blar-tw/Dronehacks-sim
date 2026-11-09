@@ -6,7 +6,7 @@ Work in the cloud lab shows up here only after it's pushed.
 
 ## Decisions
 
-_Latest version, from `main`._
+_Latest version, from `talos-field-notes`._
 
 # Team decisions
 
@@ -44,6 +44,18 @@ agent sees the change. Numbers match the Approaches tab on DroneHacks HQ.
   piece. ToF direction is closed, because the only ToF sensor points down.
 
 ## Branches
+
+### talos-field-notes (1 ahead of main, 0 behind)
+
+- `5b4c1b8` Daisy Schall, Sun Nov 08 21:18: Add talos-field: 2026-11-07 field notes and tooling
+  Crash timelines, IMU-fusion A/B harness and results, OAK depth check,
+  Pixhawk accel cal artifacts, skybeta MC mode notes with the
+  talos_mc_executor package and height-fix patches, ROSCon '25 PX4
+  workshop deck export, and Mac-side tools.
+  Workshop videos (2.7 GB, three over GitHub's 100 MB limit) and
+  duplicate .zip archives are left out.
+
+Files changed: `talos-field/README.md`, `talos-field/crash-2026-11-07-2243/README.md`, `talos-field/crash-2026-11-07-2243/crash_timeline.py`, `talos-field/crash-2026-11-07-2243/frames/left_05.01.png`, `talos-field/crash-2026-11-07-2243/frames/left_07.02.png`, `talos-field/crash-2026-11-07-2243/frames/left_07.62.png`, `talos-field/crash-2026-11-07-2243/frames/left_07.92.png`, `talos-field/crash-2026-11-07-2243/frames/left_08.20.png`, `talos-field/crash-2026-11-07-2243/frames/left_09.00.png`, `talos-field/crash-2026-11-07-2243/frames/left_10.52.png`, `talos-field/crash-2026-11-07-2243/frames/left_12.02.png`, `talos-field/crash-2026-11-07-2243/frames_att.py`, and 98 more
 
 ### main
 
